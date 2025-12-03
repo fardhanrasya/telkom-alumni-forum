@@ -1,0 +1,46 @@
+### OS / Editor
+.DS_Store
+Thumbs.db
+*.swp
+*.swo
+*.tmp
+*.log
+
+### IDE / Tools
+.vscode/
+.idea/
+*.iml
+.fleet/
+
+### Go build artifacts
+bin/
+cmd/server/server
+cmd/server/server.exe
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+*.test
+*.out
+
+### Dependency / tooling caches
+go.sum.tmp
+/vendor/
+
+### Environment / secrets
+.env
+.env.*
+*.local
+
+### Logs & coverage
+coverage.out
+coverage.txt
+*.coverprofile
+*.prof
+*.pprof
+
+### Misc
+dist/
+tmp/
+
