@@ -17,42 +17,10 @@ func NewAuthHandler(authService service.AuthService) *AuthHandler {
 	}
 }
 
-func (h *AuthHandler) Register(c *gin.Context) {
-	var input service.RegisterInput
-	if err := c.ShouldBind(&input); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
-		return
-	}
-
-	// Ambil optional avatar file, tapi serahkan proses upload ke service.
-	var avatar *service.AvatarFile
-	if fileHeader, err := c.FormFile("avatar"); err == nil && fileHeader != nil {
-		file, err := fileHeader.Open()
-		if err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{"error": "failed to open avatar file"})
-			return
-		}
-		defer file.Close()
-
-		avatar = &service.AvatarFile{
-			Reader:   file,
-			FileName: fileHeader.Filename,
-		}
-	}
-
-	res, err := h.authService.Register(c.Request.Context(), input, avatar)
-	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
-		return
-	}
-
-	c.JSON(http.StatusCreated, res)
-}
-
 func (h *AuthHandler) Login(c *gin.Context) {
 	var input service.LoginInput
 	if err := c.ShouldBindJSON(&input); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		c.JSON(http.StatusBadRequest, gin.H{"error": formatValidationError(err)})
 		return
 	}
 

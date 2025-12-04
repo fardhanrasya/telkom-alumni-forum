@@ -17,7 +17,7 @@ CREATE TABLE roles (
 
 -- 2. TABEL USERS
 CREATE TABLE users (
-    id SERIAL PRIMARY KEY,
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     username VARCHAR(50) NOT NULL UNIQUE,
     email VARCHAR(100) NOT NULL UNIQUE,
     password_hash VARCHAR(255) NOT NULL,
@@ -28,11 +28,12 @@ CREATE TABLE users (
 
 -- 3. TABEL PROFILES (Data Tambahan)
 CREATE TABLE profiles (
-    user_id INT PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
+    user_id UUID PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
     full_name VARCHAR(100) NOT NULL,
     identity_number VARCHAR(50), -- NIS/NIP
     class_grade VARCHAR(20), -- 'XII RPL 1', Nullable untuk guru
-    bio TEXT
+    bio TEXT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
 -- 4. TABEL CATEGORIES
@@ -48,7 +49,7 @@ CREATE TABLE categories (
 CREATE TABLE threads (
     id SERIAL PRIMARY KEY,
     category_id INT REFERENCES categories(id) ON DELETE SET NULL,
-    user_id INT REFERENCES users(id) ON DELETE CASCADE,
+    user_id UUID REFERENCES users(id) ON DELETE CASCADE,
     title VARCHAR(255) NOT NULL,
     slug VARCHAR(255) NOT NULL UNIQUE,
     content TEXT NOT NULL, -- Isi teks utama
@@ -63,7 +64,7 @@ CREATE TABLE threads (
 CREATE TABLE posts (
     id SERIAL PRIMARY KEY,
     thread_id INT REFERENCES threads(id) ON DELETE CASCADE,
-    user_id INT REFERENCES users(id) ON DELETE CASCADE,
+    user_id UUID REFERENCES users(id) ON DELETE CASCADE,
     content TEXT NOT NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
@@ -72,7 +73,7 @@ CREATE TABLE posts (
 -- Ini adalah Opsi 2 yang kamu pilih
 CREATE TABLE attachments (
     id SERIAL PRIMARY KEY,
-    user_id INT REFERENCES users(id) ON DELETE CASCADE, -- Uploader
+    user_id UUID REFERENCES users(id) ON DELETE CASCADE, -- Uploader
     thread_id INT REFERENCES threads(id) ON DELETE CASCADE, -- Link ke Thread
     post_id INT REFERENCES posts(id) ON DELETE CASCADE, -- Link ke Reply
     file_url TEXT NOT NULL, -- Path gambar di server/cloud
@@ -89,7 +90,7 @@ CREATE TABLE attachments (
 
 -- 8. TABEL LIKES
 CREATE TABLE thread_likes (
-    user_id INT REFERENCES users(id) ON DELETE CASCADE,
+    user_id UUID REFERENCES users(id) ON DELETE CASCADE,
     thread_id INT REFERENCES threads(id) ON DELETE CASCADE,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     PRIMARY KEY (user_id, thread_id) -- Mencegah double like
