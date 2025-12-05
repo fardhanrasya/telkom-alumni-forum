@@ -3,12 +3,12 @@ package service
 import (
 	"context"
 	"errors"
-	"io"
 	"os"
 	"strconv"
 	"strings"
 	"time"
 
+	"anoa.com/telkomalumiforum/internal/dto"
 	"anoa.com/telkomalumiforum/internal/model"
 	"anoa.com/telkomalumiforum/internal/repository"
 	"anoa.com/telkomalumiforum/pkg/storage"
@@ -17,28 +17,8 @@ import (
 	"gorm.io/gorm"
 )
 
-// AvatarFile merepresentasikan file avatar yang diupload user.
-type AvatarFile struct {
-	Reader   io.Reader
-	FileName string
-}
-
-type LoginInput struct {
-	Email    string `json:"email" binding:"required,email"`
-	Password string `json:"password" binding:"required"`
-}
-
-type AuthResponse struct {
-	AccessToken string         `json:"access_token"`
-	TokenType   string         `json:"token_type"`
-	ExpiresIn   int64          `json:"expires_in"`
-	User        *model.User    `json:"user"`
-	Role        *model.Role    `json:"role"`
-	Profile     *model.Profile `json:"profile"`
-}
-
 type AuthService interface {
-	Login(ctx context.Context, input LoginInput) (*AuthResponse, error)
+	Login(ctx context.Context, input dto.LoginInput) (*dto.AuthResponse, error)
 }
 
 type authService struct {
@@ -76,7 +56,7 @@ func NewAuthService(repo repository.UserRepository, imageStorage storage.ImageSt
 	}
 }
 
-func (s *authService) Login(ctx context.Context, input LoginInput) (*AuthResponse, error) {
+func (s *authService) Login(ctx context.Context, input dto.LoginInput) (*dto.AuthResponse, error) {
 	user, err := s.repo.FindByEmail(ctx, input.Email)
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
@@ -92,7 +72,7 @@ func (s *authService) Login(ctx context.Context, input LoginInput) (*AuthRespons
 	return s.buildAuthResponse(user)
 }
 
-func (s *authService) buildAuthResponse(user *model.User) (*AuthResponse, error) {
+func (s *authService) buildAuthResponse(user *model.User) (*dto.AuthResponse, error) {
 	token, expiresAt, err := s.generateToken(user)
 	if err != nil {
 		return nil, err
@@ -100,7 +80,7 @@ func (s *authService) buildAuthResponse(user *model.User) (*AuthResponse, error)
 
 	user.PasswordHash = ""
 
-	return &AuthResponse{
+	return &dto.AuthResponse{
 		AccessToken: token,
 		TokenType:   "Bearer",
 		ExpiresIn:   expiresAt,

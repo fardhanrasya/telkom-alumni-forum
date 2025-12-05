@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 
+	"anoa.com/telkomalumiforum/internal/dto"
 	"anoa.com/telkomalumiforum/internal/model"
 	"anoa.com/telkomalumiforum/internal/repository"
 	"anoa.com/telkomalumiforum/pkg/storage"
@@ -12,21 +13,10 @@ import (
 	"gorm.io/gorm"
 )
 
-type UpdateProfileInput struct {
-	Username *string `json:"username" form:"username"`
-	Password *string `json:"password" form:"password"`
-	Bio      *string `json:"bio" form:"bio"`
-}
-
-type UpdateProfileResponse struct {
-	User    *model.User    `json:"user"`
-	Profile *model.Profile `json:"profile"`
-}
-
 type ProfileService interface {
-	UpdateProfile(ctx context.Context, userID string, input UpdateProfileInput, avatar *AvatarFile) (*UpdateProfileResponse, error)
-	GetProfileByUsername(ctx context.Context, username string) (*model.PublicProfileResponse, error)
-	GetCurrentProfile(ctx context.Context, userID string) (*UpdateProfileResponse, error)
+	UpdateProfile(ctx context.Context, userID string, input dto.UpdateProfileInput, avatar *dto.AvatarFile) (*dto.UpdateProfileResponse, error)
+	GetProfileByUsername(ctx context.Context, username string) (*dto.PublicProfileResponse, error)
+	GetCurrentProfile(ctx context.Context, userID string) (*dto.UpdateProfileResponse, error)
 }
 
 type profileService struct {
@@ -41,7 +31,7 @@ func NewProfileService(repo repository.UserRepository, imageStorage storage.Imag
 	}
 }
 
-func (s *profileService) UpdateProfile(ctx context.Context, userID string, input UpdateProfileInput, avatar *AvatarFile) (*UpdateProfileResponse, error) {
+func (s *profileService) UpdateProfile(ctx context.Context, userID string, input dto.UpdateProfileInput, avatar *dto.AvatarFile) (*dto.UpdateProfileResponse, error) {
 	user, err := s.repo.FindByID(ctx, userID)
 	if err != nil {
 		return nil, errors.New("user not found")
@@ -100,19 +90,19 @@ func (s *profileService) UpdateProfile(ctx context.Context, userID string, input
 
 	updatedUser.PasswordHash = ""
 
-	return &UpdateProfileResponse{
+	return &dto.UpdateProfileResponse{
 		User:    updatedUser,
 		Profile: updatedUser.Profile,
 	}, nil
 }
 
-func (s *profileService) GetProfileByUsername(ctx context.Context, username string) (*model.PublicProfileResponse, error) {
+func (s *profileService) GetProfileByUsername(ctx context.Context, username string) (*dto.PublicProfileResponse, error) {
 	user, err := s.repo.FindByUsername(ctx, username)
 	if err != nil {
 		return nil, errors.New("user not found")
 	}
 
-	response := &model.PublicProfileResponse{
+	response := &dto.PublicProfileResponse{
 		Username:  user.Username,
 		Role:      user.Role.Name,
 		AvatarURL: user.AvatarURL,
@@ -127,7 +117,7 @@ func (s *profileService) GetProfileByUsername(ctx context.Context, username stri
 	return response, nil
 }
 
-func (s *profileService) GetCurrentProfile(ctx context.Context, userID string) (*UpdateProfileResponse, error) {
+func (s *profileService) GetCurrentProfile(ctx context.Context, userID string) (*dto.UpdateProfileResponse, error) {
 	user, err := s.repo.FindByID(ctx, userID)
 	if err != nil {
 		return nil, errors.New("user not found")
@@ -135,7 +125,7 @@ func (s *profileService) GetCurrentProfile(ctx context.Context, userID string) (
 
 	user.PasswordHash = ""
 
-	return &UpdateProfileResponse{
+	return &dto.UpdateProfileResponse{
 		User:    user,
 		Profile: user.Profile,
 	}, nil

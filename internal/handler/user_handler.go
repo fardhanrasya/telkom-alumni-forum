@@ -3,6 +3,7 @@ package handler
 import (
 	"net/http"
 
+	"anoa.com/telkomalumiforum/internal/dto"
 	"anoa.com/telkomalumiforum/internal/service"
 	"github.com/gin-gonic/gin"
 )
@@ -18,7 +19,7 @@ func NewAuthHandler(authService service.AuthService) *AuthHandler {
 }
 
 func (h *AuthHandler) Login(c *gin.Context) {
-	var input service.LoginInput
+	var input dto.LoginInput
 	if err := c.ShouldBindJSON(&input); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": formatValidationError(err)})
 		return

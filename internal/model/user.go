@@ -41,13 +41,3 @@ type Profile struct {
 	Bio            *string   `gorm:"type:text" json:"bio,omitempty"`
 	CreatedAt      time.Time `gorm:"autoCreateTime" json:"created_at"`
 }
-
-// PublicProfileResponse untuk data profil publik
-type PublicProfileResponse struct {
-	Username   string    `json:"username"`
-	Role       string    `json:"role"`
-	AvatarURL  *string   `json:"avatar_url,omitempty"`
-	CreatedAt  time.Time `json:"created_at"`
-	ClassGrade *string   `json:"class_grade,omitempty"`
-	Bio        *string   `json:"bio,omitempty"`
-}

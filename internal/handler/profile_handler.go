@@ -3,6 +3,7 @@ package handler
 import (
 	"net/http"
 
+	"anoa.com/telkomalumiforum/internal/dto"
 	"anoa.com/telkomalumiforum/internal/service"
 	"github.com/gin-gonic/gin"
 )
@@ -56,13 +57,13 @@ func (h *ProfileHandler) UpdateProfile(c *gin.Context) {
 		return
 	}
 
-	var input service.UpdateProfileInput
+	var input dto.UpdateProfileInput
 	if err := c.ShouldBind(&input); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": formatValidationError(err)})
 		return
 	}
 
-	var avatar *service.AvatarFile
+	var avatar *dto.AvatarFile
 	if fileHeader, err := c.FormFile("avatar"); err == nil && fileHeader != nil {
 		file, err := fileHeader.Open()
 		if err != nil {
@@ -71,7 +72,7 @@ func (h *ProfileHandler) UpdateProfile(c *gin.Context) {
 		}
 		defer file.Close()
 
-		avatar = &service.AvatarFile{
+		avatar = &dto.AvatarFile{
 			Reader:   file,
 			FileName: fileHeader.Filename,
 		}

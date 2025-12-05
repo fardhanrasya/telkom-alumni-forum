@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 
+	"anoa.com/telkomalumiforum/internal/dto"
 	"anoa.com/telkomalumiforum/internal/model"
 	"anoa.com/telkomalumiforum/internal/repository"
 	"anoa.com/telkomalumiforum/pkg/storage"
@@ -12,25 +13,8 @@ import (
 	"gorm.io/gorm"
 )
 
-type CreateUserInput struct {
-	Username       string  `json:"username" form:"username" binding:"required,min=3,max=50"`
-	Email          string  `json:"email" form:"email" binding:"required,email"`
-	Password       string  `json:"password" form:"password" binding:"required,min=8"`
-	Role           string  `json:"role" form:"role" binding:"required"`
-	FullName       string  `json:"full_name" form:"full_name" binding:"required"`
-	IdentityNumber *string `json:"identity_number" form:"identity_number"`
-	ClassGrade     *string `json:"class_grade" form:"class_grade"`
-	Bio            *string `json:"bio" form:"bio"`
-}
-
-type CreateUserResponse struct {
-	User    *model.User    `json:"user"`
-	Role    *model.Role    `json:"role"`
-	Profile *model.Profile `json:"profile"`
-}
-
 type AdminService interface {
-	CreateUser(ctx context.Context, input CreateUserInput, avatar *AvatarFile) (*CreateUserResponse, error)
+	CreateUser(ctx context.Context, input dto.CreateUserInput, avatar *dto.AvatarFile) (*dto.CreateUserResponse, error)
 }
 
 type adminService struct {
@@ -45,7 +29,7 @@ func NewAdminService(repo repository.UserRepository, imageStorage storage.ImageS
 	}
 }
 
-func (s *adminService) CreateUser(ctx context.Context, input CreateUserInput, avatar *AvatarFile) (*CreateUserResponse, error) {
+func (s *adminService) CreateUser(ctx context.Context, input dto.CreateUserInput, avatar *dto.AvatarFile) (*dto.CreateUserResponse, error) {
 	if _, err := s.repo.FindByEmail(ctx, input.Email); err == nil {
 		return nil, errors.New("email already registered")
 	} else if !errors.Is(err, gorm.ErrRecordNotFound) {
@@ -107,7 +91,7 @@ func (s *adminService) CreateUser(ctx context.Context, input CreateUserInput, av
 
 	createdUser.PasswordHash = ""
 
-	return &CreateUserResponse{
+	return &dto.CreateUserResponse{
 		User:    createdUser,
 		Role:    &createdUser.Role,
 		Profile: createdUser.Profile,
