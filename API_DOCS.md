@@ -1,6 +1,6 @@
 # API DOCS
 
-## Development Mode - Admin Seeding
+### Development Mode - Admin Seeding
 
 Ketika aplikasi berjalan dalam mode development (`APP_ENV=development`), sistem akan otomatis membuat user admin default:
 
@@ -179,7 +179,58 @@ Authorization: Bearer <admin_token>
 }
 ```
 
-### 5. ✅ GET /api/profile/:username (Authenticated User)
+### 5. ✅ POST /api/admin/categories (Admin Only)
+
+Membuat kategori topik baru untuk forum.
+
+**Headers:**
+
+```
+Authorization: Bearer <admin_token>
+Content-Type: application/json
+```
+
+**Body (JSON):**
+
+- `name` (required): string, max 100 char. Nama kategori.
+- `description` (optional): string.
+
+**Response (201):**
+
+```json
+{
+  "message": "category created successfully"
+}
+```
+
+### 6. ✅ POST /api/threads (Authenticated User)
+
+Membuat thread baru, bisa menyertakan lampiran gambar/file.
+
+**Headers:**
+
+```
+Authorization: Bearer <user_token>
+Content-Type: multipart/form-data
+```
+
+**Body (form-data):**
+
+- `category_id` (required): UUID v7 (string) dari kategori.
+- `title` (required): string, max 255 char.
+- `content` (required): string (bisa markdown/html).
+- `audience` (required): string (`semua`, `guru`, `siswa`). Target pembaca.
+- `attachments` (optional): multiple files (images/docs).
+
+**Response (201):**
+
+```json
+{
+  "message": "thread created successfully"
+}
+```
+
+### 7. ✅ GET /api/profile/:username (Authenticated User)
 
 Mendapatkan data profil publik user berdasarkan username. Endpoint ini tidak memerlukan autentikasi.
 
@@ -208,7 +259,7 @@ Mendapatkan data profil publik user berdasarkan username. Endpoint ini tidak mem
 }
 ```
 
-### 6. ✅ GET /api/profile/me (Authenticated User)
+### 8. ✅ GET /api/profile/me (Authenticated User)
 
 Mendapatkan data profil lengkap dari user yang sedang login. Menampilkan semua data termasuk email dan informasi sensitif lainnya.
 
@@ -247,7 +298,7 @@ Authorization: Bearer <user_token>
 }
 ```
 
-### 7. ✅ PUT /api/profile (Authenticated User)
+### 9. ✅ PUT /api/profile (Authenticated User)
 
 Update profile user sendiri. User hanya bisa edit username, password, bio, dan avatar.
 

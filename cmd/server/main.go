@@ -52,6 +52,14 @@ func main() {
 	profileService := service.NewProfileService(userRepo, imageStorage)
 	profileHandler := handler.NewProfileHandler(profileService)
 
+	categoryRepo := repository.NewCategoryRepository(db)
+	categoryService := service.NewCategoryService(categoryRepo)
+	categoryHandler := handler.NewCategoryHandler(categoryService)
+
+	threadRepo := repository.NewThreadRepository(db)
+	threadService := service.NewThreadService(threadRepo, categoryRepo, imageStorage)
+	threadHandler := handler.NewThreadHandler(threadService)
+
 	router := gin.Default()
 
 	api := router.Group("/api")
@@ -68,10 +76,6 @@ func main() {
 	// Protected routes (perlu auth)
 	api.Use(authMiddleware.RequireAuth())
 	{
-		{
-		api.GET("/profile/:username", profileHandler.GetProfileByUsername)
-		}
-
 		admin := api.Group("/admin")
 		admin.Use(authMiddleware.RequireAdmin())
 		{
@@ -79,7 +83,10 @@ func main() {
 			admin.GET("/users", adminHandler.GetAllUsers)
 			admin.PUT("/users/:id", adminHandler.UpdateUser)
 			admin.DELETE("/users/:id", adminHandler.DeleteUser)
+			admin.POST("/categories", categoryHandler.CreateCategory)
 		}
+
+		api.POST("/threads", threadHandler.CreateThread)
 
 		profile := api.Group("/profile")
 		{
@@ -104,6 +111,9 @@ func migrate(db *gorm.DB) error {
 		&model.Role{},
 		&model.User{},
 		&model.Profile{},
+		&model.Category{},
+		&model.Thread{},
+		&model.Attachment{},
 	)
 }
 

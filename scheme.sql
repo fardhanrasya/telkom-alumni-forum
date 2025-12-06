@@ -53,8 +53,7 @@ CREATE TABLE threads (
     title VARCHAR(255) NOT NULL,
     slug VARCHAR(255) NOT NULL UNIQUE,
     content TEXT NOT NULL, -- Isi teks utama
-    is_pinned BOOLEAN DEFAULT FALSE,
-    is_locked BOOLEAN DEFAULT FALSE,
+    audience VARCHAR(50) NOT NULL, -- 'semua', 'guru', 'siswa'
     views INT DEFAULT 0,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
