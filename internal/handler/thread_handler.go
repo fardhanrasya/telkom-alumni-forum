@@ -43,3 +43,39 @@ func (h *ThreadHandler) CreateThread(c *gin.Context) {
 
 	c.JSON(http.StatusCreated, gin.H{"message": "thread created successfully"})
 }
+
+func (h *ThreadHandler) GetAllThreads(c *gin.Context) {
+	var filter dto.ThreadFilter
+	if err := c.ShouldBindQuery(&filter); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	// Set defaults
+	if filter.Page == 0 {
+		filter.Page = 1
+	}
+	if filter.Limit == 0 {
+		filter.Limit = 10
+	}
+
+	userIDStr, exists := c.Get("user_id")
+	if !exists {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})
+		return
+	}
+
+	userID, err := uuid.Parse(userIDStr.(string))
+	if err != nil {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "invalid user id"})
+		return
+	}
+
+	threads, err := h.service.GetAllThreads(c.Request.Context(), userID, filter)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, threads)
+}

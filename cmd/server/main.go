@@ -57,7 +57,7 @@ func main() {
 	categoryHandler := handler.NewCategoryHandler(categoryService)
 
 	threadRepo := repository.NewThreadRepository(db)
-	threadService := service.NewThreadService(threadRepo, categoryRepo, imageStorage)
+	threadService := service.NewThreadService(threadRepo, categoryRepo, userRepo, imageStorage)
 	threadHandler := handler.NewThreadHandler(threadService)
 
 	router := gin.Default()
@@ -84,9 +84,13 @@ func main() {
 			admin.PUT("/users/:id", adminHandler.UpdateUser)
 			admin.DELETE("/users/:id", adminHandler.DeleteUser)
 			admin.POST("/categories", categoryHandler.CreateCategory)
+			admin.DELETE("/categories/:id", categoryHandler.DeleteCategory)
 		}
 
+		api.GET("/categories", categoryHandler.GetAllCategories) // Public or Protected? Making it protected as per grouping
+
 		api.POST("/threads", threadHandler.CreateThread)
+		api.GET("/threads", threadHandler.GetAllThreads)
 
 		profile := api.Group("/profile")
 		{

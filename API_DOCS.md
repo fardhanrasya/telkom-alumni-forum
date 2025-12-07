@@ -203,7 +203,61 @@ Content-Type: application/json
 }
 ```
 
-### 6. ✅ POST /api/threads (Authenticated User)
+### 6. ✅ DELETE /api/admin/categories/:id (Admin Only)
+
+Menghapus kategori berdasarkan ID.
+
+**Headers:**
+
+```
+Authorization: Bearer <admin_token>
+```
+
+**URL Parameter:**
+
+- `id`: UUID v7 dari kategori
+
+**Response (200):**
+
+```json
+{
+  "message": "category deleted successfully"
+}
+```
+
+### 7. ✅ GET /api/categories (Authenticated User)
+
+Mendapatkan daftar semua kategori dengan filtering (search name).
+
+**Headers:**
+
+```
+Authorization: Bearer <user_token>
+```
+
+**Query Parameter:**
+
+- `search` (optional): string. Filter berdasarkan nama kategori.
+
+**Response (200):**
+
+```json
+{
+  "data": [
+    {
+      "id": "uuid-v7-string",
+      "name": "Teknologi",
+      "slug": "teknologi",
+      "description": "Diskusi seputar teknologi"
+    }
+  ],
+  "meta": {
+    "total_items": 10
+  }
+}
+```
+
+### 8. ✅ POST /api/threads (Authenticated User)
 
 Membuat thread baru, bisa menyertakan lampiran gambar/file.
 
@@ -230,7 +284,56 @@ Content-Type: multipart/form-data
 }
 ```
 
-### 7. ✅ GET /api/profile/:username (Authenticated User)
+### 9. ✅ GET /api/threads (Authenticated User)
+
+Mendapatkan daftar thread dengan filtering dan pagination.
+
+**Headers:**
+
+```
+Authorization: Bearer <user_token>
+```
+
+**Query Parameter:**
+
+- `category_id` (optional): UUID string. Filter by category.
+- `search` (optional): string. Search title/content.
+- `audience` (optional): string (`semua`, `guru`, `siswa`).
+    **Catatan**:
+    - **Siswa** hanya akan melihat thread dengan audience `siswa` atau `semua`. Filter `guru` akan diabaikan.
+    - **Guru** hanya akan melihat thread dengan audience `guru` atau `semua`. Filter `siswa` akan diabaikan.
+- `sort_by` (optional): `popular` (by views) or default (newest).
+- `page` (optional): int, default 1.
+- `limit` (optional): int, default 10.
+
+**Response (200):**:
+
+```json
+{
+  "data": [
+    {
+      "id": "uuid...",
+      "category_name": "Teknologi",
+      "title": "Tutorial Golang",
+      "slug": "tutorial-golang",
+      "content": "Isi content...",
+      "audience": "semua",
+      "views": 100,
+      "author": "johndoe",
+      "attachments": [],
+      "created_at": "2024-01-01 10:00:00"
+    }
+  ],
+  "meta": {
+    "current_page": 1,
+    "total_pages": 5,
+    "total_items": 50,
+    "limit": 10
+  }
+}
+```
+
+### 10. ✅ GET /api/profile/:username (Authenticated User)
 
 Mendapatkan data profil publik user berdasarkan username. Endpoint ini tidak memerlukan autentikasi.
 
@@ -259,7 +362,7 @@ Mendapatkan data profil publik user berdasarkan username. Endpoint ini tidak mem
 }
 ```
 
-### 8. ✅ GET /api/profile/me (Authenticated User)
+### 11. ✅ GET /api/profile/me (Authenticated User)
 
 Mendapatkan data profil lengkap dari user yang sedang login. Menampilkan semua data termasuk email dan informasi sensitif lainnya.
 
@@ -298,7 +401,7 @@ Authorization: Bearer <user_token>
 }
 ```
 
-### 9. ✅ PUT /api/profile (Authenticated User)
+### 12. ✅ PUT /api/profile (Authenticated User)
 
 Update profile user sendiri. User hanya bisa edit username, password, bio, dan avatar.
 
