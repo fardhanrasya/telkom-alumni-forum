@@ -11,7 +11,9 @@ import (
 type ThreadRepository interface {
 	Create(ctx context.Context, thread *model.Thread) error
 	FindBySlug(ctx context.Context, slug string) (*model.Thread, error)
+	FindByID(ctx context.Context, id uuid.UUID) (*model.Thread, error)
 	FindAll(ctx context.Context, categoryID *uuid.UUID, search string, audiences []string, sortBy string, offset, limit int) ([]*model.Thread, int64, error)
+	Delete(ctx context.Context, id uuid.UUID) error
 }
 
 type threadRepository struct {
@@ -34,6 +36,20 @@ func (r *threadRepository) FindBySlug(ctx context.Context, slug string) (*model.
 		Preload("User.Profile").
 		Preload("Attachments").
 		Where("slug = ?", slug).
+		First(&thread).Error; err != nil {
+		return nil, err
+	}
+	return &thread, nil
+}
+
+func (r *threadRepository) FindByID(ctx context.Context, id uuid.UUID) (*model.Thread, error) {
+	var thread model.Thread
+	if err := r.db.WithContext(ctx).
+		Preload("Category").
+		Preload("User").
+		Preload("User.Profile").
+		Preload("Attachments").
+		Where("id = ?", id).
 		First(&thread).Error; err != nil {
 		return nil, err
 	}
@@ -77,4 +93,8 @@ func (r *threadRepository) FindAll(ctx context.Context, categoryID *uuid.UUID, s
 	}
 
 	return threads, total, nil
+}
+
+func (r *threadRepository) Delete(ctx context.Context, id uuid.UUID) error {
+	return r.db.WithContext(ctx).Delete(&model.Thread{}, id).Error
 }

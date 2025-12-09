@@ -79,3 +79,36 @@ func (h *ThreadHandler) GetAllThreads(c *gin.Context) {
 
 	c.JSON(http.StatusOK, threads)
 }
+
+func (h *ThreadHandler) DeleteThread(c *gin.Context) {
+	idStr := c.Param("id")
+	threadID, err := uuid.Parse(idStr)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid thread id"})
+		return
+	}
+
+	userIDStr, exists := c.Get("user_id")
+	if !exists {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})
+		return
+	}
+
+	userID, err := uuid.Parse(userIDStr.(string))
+	if err != nil {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "invalid user id"})
+		return
+	}
+
+	if err := h.service.DeleteThread(c.Request.Context(), userID, threadID); err != nil {
+		// Basic error string matching, ideally should use custom errors or checks
+		if err.Error() == "unauthorized: you can only delete your own threads unless you are an admin" {
+			c.JSON(http.StatusForbidden, gin.H{"error": err.Error()})
+			return
+		}
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"message": "thread deleted successfully"})
+}

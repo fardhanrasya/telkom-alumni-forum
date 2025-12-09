@@ -15,6 +15,7 @@ import (
 type ThreadService interface {
 	CreateThread(ctx context.Context, userID uuid.UUID, req dto.CreateThreadRequest) error
 	GetAllThreads(ctx context.Context, userID uuid.UUID, filter dto.ThreadFilter) (*dto.PaginatedThreadResponse, error)
+	DeleteThread(ctx context.Context, userID uuid.UUID, threadID uuid.UUID) error
 }
 
 type threadService struct {
@@ -209,4 +210,40 @@ func (s *threadService) GetAllThreads(ctx context.Context, userID uuid.UUID, fil
 			Limit:       filter.Limit,
 		},
 	}, nil
+}
+
+func (s *threadService) DeleteThread(ctx context.Context, userID uuid.UUID, threadID uuid.UUID) error {
+	// 1. Get Thread
+	thread, err := s.threadRepo.FindByID(ctx, threadID)
+	if err != nil {
+		return err
+	}
+
+	// 2. Get Requesting User to check Role
+	user, err := s.userRepo.FindByID(ctx, userID.String())
+	if err != nil {
+		return fmt.Errorf("user not found")
+	}
+
+	// 3. Permission Check
+	// Assuming "admin" is the role name for admin users.
+	if thread.UserID != userID && user.Role.Name != "admin" {
+		return fmt.Errorf("unauthorized: you can only delete your own threads unless you are an admin")
+	}
+
+	// 4. Delete Attachments
+	for _, att := range thread.Attachments {
+		// Delete from Cloudinary
+		// We ignore error here to proceed with deletion, but ideally log it.
+		// Since we don't have a logger injected, we'll just proceed.
+		_ = s.fileStorage.DeleteImage(ctx, att.FileURL)
+
+		// Delete from DB
+		if err := s.attachmentRepo.Delete(ctx, att.ID); err != nil {
+			return fmt.Errorf("failed to delete attachment record: %w", err)
+		}
+	}
+
+	// 5. Delete Thread
+	return s.threadRepo.Delete(ctx, threadID)
 }

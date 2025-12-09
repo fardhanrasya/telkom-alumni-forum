@@ -97,6 +97,7 @@ func main() {
 
 		api.POST("/threads", threadHandler.CreateThread)
 		api.GET("/threads", threadHandler.GetAllThreads)
+		api.DELETE("/threads/:id", threadHandler.DeleteThread)
 
 		profile := api.Group("/profile")
 		{

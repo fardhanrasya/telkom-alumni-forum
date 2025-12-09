@@ -485,6 +485,36 @@ Content-Type: multipart/form-data
 }
 ```
 
+### 14. ✅ DELETE /api/threads/:id (Authenticated User)
+
+Menghapus thread berdasarkan ID. User hanya bisa menghapus thread miliknya sendiri, kecuali jika user adalah admin (admin bisa menghapus thread siapapun). Attachment yang terhubung juga akan dihapus.
+
+**Headers:**
+
+```
+Authorization: Bearer <user_token>
+```
+
+**URL Parameter:**
+
+- `id`: UUID thread yang akan dihapus.
+
+**Response (200):**
+
+```json
+{
+  "message": "thread deleted successfully"
+}
+```
+
+**Response (403):**
+
+```json
+{
+  "error": "unauthorized: you can only delete your own threads unless you are an admin"
+}
+```
+
 ## Endpoint yang Tetap Ada
 
 ### ✅ POST /api/auth/login
