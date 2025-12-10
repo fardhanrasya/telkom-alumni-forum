@@ -300,6 +300,35 @@ Content-Type: application/json
 
 Mendapatkan daftar thread dengan filtering dan pagination.
 
+### 9.1 ✅ PUT /api/threads/:id (Authenticated User)
+
+Mengupdate thread (judul, konten, kategori, audience, dan attachment).
+
+**Headers:**
+
+```
+Authorization: Bearer <user_token>
+Content-Type: application/json
+```
+
+**Body (JSON):**
+
+- `category_id` (required): UUID.
+- `title` (required): string.
+- `content` (required): string.
+- `audience` (required): string.
+- `attachment_ids` (optional): array of uint. Daftar lengkap ID attachment yang diinginkan (menggantikan list sebelumnya).
+
+**Response (200):**
+
+```json
+{
+  "message": "thread updated successfully"
+}
+```
+
+**Response (403):** "unauthorized: you can only update your own thread"
+
 **Headers:**
 
 ```
@@ -581,9 +610,95 @@ Semua endpoint akan mengembalikan error message yang jelas dalam bahasa Indonesi
 }
 ```
 
+### 15. ✅ POST /api/threads/:thread_id/posts (Authenticated User)
+
+Membuat balasan (post) pada sebuah thread. Bisa juga berupa nested reply jika `parent_id` disertakan.
+
+**Headers:**
+
+```
+Authorization: Bearer <user_token>
+Content-Type: application/json
+```
+
+**URL Parameter:**
+- `thread_id`: UUID dari thread.
+
+**Body (JSON):**
+- `content` (required): string.
+- `parent_id` (optional): UUID string, ID dari post lain jika ini adalah balasan berjenjang.
+- `attachment_ids` (optional): array of int.
+
+**Response (201):**
+
+```json
+{
+  "id": "uuid...",
+  "thread_id": "uuid...",
+  "parent_id": "uuid... or null",
+  "content": "This is a reply",
+  "author": "username",
+  "attachments": [],
+  "created_at": "..."
+}
+```
+
+### 16. ✅ GET /api/threads/:thread_id/posts (Authenticated User)
+
+Mendapatkan semua balasan pada thread tertentu dengan pagination.
+
+**Headers:**
+
+```
+Authorization: Bearer <user_token>
+```
+
+**Query Parameter:**
+
+- `page` (optional): int, default 1.
+- `limit` (optional): int, default 10.
+
+**Response (200):**
+
+```json
+{
+  "data": [
+    {
+      "id": "uuid...",
+      "content": "Reply 1",
+      "attachments": [],
+      "author": "user1"
+    }
+  ],
+  "meta": {
+    "current_page": 1,
+    "total_pages": 5,
+    "total_items": 50,
+    "limit": 10
+  }
+}
+```
+
+### 17. ✅ PUT /api/posts/:id (Authenticated User)
+
+Mengedit post. Hanya pemilik post yang bisa mengedit. Bisa juga mengupdate attachment.
+
+**Body (JSON):**
+- `content` (required): string.
+- `attachment_ids` (optional): array of uint. Daftar lengkap ID attachment yang diinginkan (menggantikan list sebelumnya).
+
+**Response (200):** Updated Post object.
+
+### 18. ✅ DELETE /api/posts/:id (Authenticated User)
+
+Menghapus post. Hanya pemilik atau admin.
+
+**Response (200):** `{"message": "post deleted successfully"}`
+
 ## Catatan Keamanan
 
 1. **Admin Only**: Endpoint `/api/admin/*` memerlukan token JWT dari user dengan role `admin`
 2. **Authentication**: Endpoint `/api/profile` memerlukan token JWT yang valid
 3. **Authorization**: User hanya bisa update profile mereka sendiri
 4. **Validation**: Username harus unik, password minimal 8 karakter
+

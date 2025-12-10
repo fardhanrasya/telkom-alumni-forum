@@ -38,7 +38,7 @@ CREATE TABLE profiles (
 
 -- 4. TABEL CATEGORIES
 CREATE TABLE categories (
-    id SERIAL PRIMARY KEY,
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     name VARCHAR(100) NOT NULL,
     slug VARCHAR(100) NOT NULL UNIQUE,
     description TEXT,
@@ -47,8 +47,8 @@ CREATE TABLE categories (
 
 -- 5. TABEL THREADS (Topik Utama)
 CREATE TABLE threads (
-    id SERIAL PRIMARY KEY,
-    category_id INT REFERENCES categories(id) ON DELETE SET NULL,
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    category_id UUID REFERENCES categories(id) ON DELETE SET NULL,
     user_id UUID REFERENCES users(id) ON DELETE CASCADE,
     title VARCHAR(255) NOT NULL,
     slug VARCHAR(255) NOT NULL UNIQUE,
@@ -61,31 +61,38 @@ CREATE TABLE threads (
 
 -- 6. TABEL POSTS (Balasan/Komentar)
 CREATE TABLE posts (
-    id SERIAL PRIMARY KEY,
-    thread_id INT REFERENCES threads(id) ON DELETE CASCADE,
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    thread_id UUID REFERENCES threads(id) ON DELETE CASCADE,
+    parent_id UUID REFERENCES posts(id) ON DELETE CASCADE, -- Untuk nested replies
     user_id UUID REFERENCES users(id) ON DELETE CASCADE,
     content TEXT NOT NULL,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
 -- 7. TABEL ATTACHMENTS (Galeri Foto/File)
--- Ini adalah Opsi 2 yang kamu pilih
 CREATE TABLE attachments (
     id SERIAL PRIMARY KEY,
     user_id UUID REFERENCES users(id) ON DELETE CASCADE, -- Uploader
-    thread_id INT REFERENCES threads(id) ON DELETE CASCADE, -- Link ke Thread (Nullable)
-    post_id INT REFERENCES posts(id) ON DELETE CASCADE, -- Link ke Reply (Nullable)
+    thread_id UUID REFERENCES threads(id) ON DELETE CASCADE, -- Link ke Thread (Nullable)
+    post_id UUID REFERENCES posts(id) ON DELETE CASCADE, -- Link ke Reply (Nullable)
     file_url TEXT NOT NULL, -- Path gambar di server/cloud
     file_type VARCHAR(50), -- 'image/png', 'application/pdf'
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-    
-    -- Constraint check_attachment_parent REMOVED to allow orphaned attachments during upload
 );
 
--- 8. TABEL LIKES
+-- 8. THREAD LIKES
 CREATE TABLE thread_likes (
     user_id UUID REFERENCES users(id) ON DELETE CASCADE,
-    thread_id INT REFERENCES threads(id) ON DELETE CASCADE,
+    thread_id UUID REFERENCES threads(id) ON DELETE CASCADE,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     PRIMARY KEY (user_id, thread_id) -- Mencegah double like
+);
+
+-- 9. POST LIKES
+CREATE TABLE post_likes (
+    user_id UUID REFERENCES users(id) ON DELETE CASCADE,
+    post_id UUID REFERENCES posts(id) ON DELETE CASCADE,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (user_id, post_id) -- Mencegah double like
 );

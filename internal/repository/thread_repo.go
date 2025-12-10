@@ -13,6 +13,7 @@ type ThreadRepository interface {
 	FindBySlug(ctx context.Context, slug string) (*model.Thread, error)
 	FindByID(ctx context.Context, id uuid.UUID) (*model.Thread, error)
 	FindAll(ctx context.Context, categoryID *uuid.UUID, search string, audiences []string, sortBy string, offset, limit int) ([]*model.Thread, int64, error)
+	Update(ctx context.Context, thread *model.Thread) error
 	Delete(ctx context.Context, id uuid.UUID) error
 }
 
@@ -97,4 +98,8 @@ func (r *threadRepository) FindAll(ctx context.Context, categoryID *uuid.UUID, s
 
 func (r *threadRepository) Delete(ctx context.Context, id uuid.UUID) error {
 	return r.db.WithContext(ctx).Delete(&model.Thread{}, id).Error
+}
+
+func (r *threadRepository) Update(ctx context.Context, thread *model.Thread) error {
+	return r.db.WithContext(ctx).Save(thread).Error
 }

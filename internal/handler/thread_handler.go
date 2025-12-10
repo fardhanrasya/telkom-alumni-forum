@@ -112,3 +112,36 @@ func (h *ThreadHandler) DeleteThread(c *gin.Context) {
 
 	c.JSON(http.StatusOK, gin.H{"message": "thread deleted successfully"})
 }
+
+func (h *ThreadHandler) UpdateThread(c *gin.Context) {
+	idStr := c.Param("id")
+	threadID, err := uuid.Parse(idStr)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid thread id"})
+		return
+	}
+
+	var req dto.UpdateThreadRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	userIDStr, exists := c.Get("user_id")
+	if !exists {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})
+		return
+	}
+	userID, _ := uuid.Parse(userIDStr.(string))
+
+	if err := h.service.UpdateThread(c.Request.Context(), userID, threadID, req); err != nil {
+		if err.Error() == "unauthorized: you can only update your own thread" {
+			c.JSON(http.StatusForbidden, gin.H{"error": err.Error()})
+			return
+		}
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"message": "thread updated successfully"})
+}

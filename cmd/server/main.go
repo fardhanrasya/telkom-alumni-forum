@@ -66,6 +66,10 @@ func main() {
 	threadService := service.NewThreadService(threadRepo, categoryRepo, userRepo, attachmentRepo, imageStorage)
 	threadHandler := handler.NewThreadHandler(threadService)
 
+	postRepo := repository.NewPostRepository(db)
+	postService := service.NewPostService(postRepo, threadRepo, userRepo, attachmentRepo, imageStorage)
+	postHandler := handler.NewPostHandler(postService)
+
 	router := gin.Default()
 
 	api := router.Group("/api")
@@ -97,7 +101,13 @@ func main() {
 
 		api.POST("/threads", threadHandler.CreateThread)
 		api.GET("/threads", threadHandler.GetAllThreads)
+		api.PUT("/threads/:id", threadHandler.UpdateThread)
 		api.DELETE("/threads/:id", threadHandler.DeleteThread)
+
+		api.POST("/threads/:thread_id/posts", postHandler.CreatePost)
+		api.GET("/threads/:thread_id/posts", postHandler.GetPostsByThreadID)
+		api.PUT("/posts/:id", postHandler.UpdatePost)
+		api.DELETE("/posts/:id", postHandler.DeletePost)
 
 		profile := api.Group("/profile")
 		{
@@ -142,6 +152,7 @@ func migrate(db *gorm.DB) error {
 		&model.Profile{},
 		&model.Category{},
 		&model.Thread{},
+		&model.Post{},
 		&model.Attachment{},
 	)
 }
