@@ -61,6 +61,8 @@ services:
       DB_PASS: ${DB_PASS:-postgres}
       DB_NAME: ${DB_NAME:-telkom_forum}
       DB_PORT: 5432
+      # JWT Configuration
+      JWT_SECRET: ${JWT_SECRET}
       # Application port
       PORT: ${PORT:-8080}
       # Cloudinary configuration (optional - set these in .env file)
