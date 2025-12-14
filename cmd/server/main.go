@@ -145,8 +145,10 @@ func main() {
 		api.DELETE("/posts/:post_id", postHandler.DeletePost)
 
 		api.POST("/threads/:thread_id/like", likeHandler.LikeThread)
+		api.GET("/threads/:thread_id/like", likeHandler.CheckThreadLike)
 		api.DELETE("/threads/:thread_id/like", likeHandler.UnlikeThread)
 		api.POST("/posts/:post_id/like", likeHandler.LikePost)
+		api.GET("/posts/:post_id/like", likeHandler.CheckPostLike)
 		api.DELETE("/posts/:post_id/like", likeHandler.UnlikePost)
 
 		profile := api.Group("/profile")

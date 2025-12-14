@@ -19,6 +19,8 @@ type LikeService interface {
 	UnlikePost(ctx context.Context, userID uuid.UUID, postID uuid.UUID) error
 	GetThreadLikes(ctx context.Context, threadID uuid.UUID) (int64, error)
 	GetPostLikes(ctx context.Context, postID uuid.UUID) (int64, error)
+	CheckUserLikedThread(ctx context.Context, userID uuid.UUID, threadID uuid.UUID) (bool, error)
+	CheckUserLikedPost(ctx context.Context, userID uuid.UUID, postID uuid.UUID) (bool, error)
 	StartWorker(ctx context.Context)
 }
 
@@ -142,6 +144,25 @@ func (s *likeService) GetThreadLikes(ctx context.Context, threadID uuid.UUID) (i
 func (s *likeService) GetPostLikes(ctx context.Context, postID uuid.UUID) (int64, error) {
 	key := fmt.Sprintf("post_likes:%s", postID.String())
 	return s.redisClient.SCard(ctx, key).Result()
+}
+
+func (s *likeService) CheckUserLikedThread(ctx context.Context, userID uuid.UUID, threadID uuid.UUID) (bool, error) {
+	key := fmt.Sprintf("thread_likes:%s", threadID.String())
+	isMember, err := s.redisClient.SIsMember(ctx, key, userID.String()).Result()
+	if err == nil && isMember {
+		return true, nil
+	}
+
+	return s.likeRepo.IsThreadLiked(ctx, userID, threadID)
+}
+
+func (s *likeService) CheckUserLikedPost(ctx context.Context, userID uuid.UUID, postID uuid.UUID) (bool, error) {
+	key := fmt.Sprintf("post_likes:%s", postID.String())
+	isMember, err := s.redisClient.SIsMember(ctx, key, userID.String()).Result()
+	if err == nil && isMember {
+		return true, nil
+	}
+	return s.likeRepo.IsPostLiked(ctx, userID, postID)
 }
 
 func (s *likeService) pushTask(ctx context.Context, task LikeTask) error {

@@ -691,10 +691,6 @@ Mengedit post. Hanya pemilik post yang bisa mengedit. Bisa juga mengupdate attac
 
 **Response (403):** "unauthorized: you can only update your own post"
 
-### 18. ✅ DELETE /api/posts/:id (Authenticated User)
-
-Menghapus post.
-
 ### 19. ✅ POST /api/threads/:id/like (Authenticated User)
 
 Like sebuah thread. Menggunakan Redis queue untuk processing.
@@ -744,7 +740,7 @@ Menghapus post. Hanya pemilik atau admin.
 }
 ```
 
-### 23. ✅ GET /api/threads/:slug (Authenticated User)
+### 23. ✅ GET /api/threads/slug/:slug (Authenticated User)
 
 Mendapatkan detail thread berdasarkan slug. Endpoint ini juga akan otomatis menambahkan view count (+1) untuk thread tersebut secara asynchronous.
 
@@ -780,6 +776,30 @@ Authorization: Bearer <user_token>
 ```json
 {
   "thread not found": "record not found"
+}
+```
+
+### 24. ✅ GET /api/threads/:id/like (Authenticated User)
+
+Mengecek apakah user yang sedang login sudah me-like thread tertentu.
+
+**Response (200):**
+
+```json
+{
+  "liked": true
+}
+```
+
+### 25. ✅ GET /api/posts/:id/like (Authenticated User)
+
+Mengecek apakah user yang sedang login sudah me-like post tertentu.
+
+**Response (200):**
+
+```json
+{
+  "liked": false
 }
 ```
 

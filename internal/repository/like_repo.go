@@ -13,6 +13,8 @@ type LikeRepository interface {
 	UnlikeThread(ctx context.Context, userID uuid.UUID, threadID uuid.UUID) error
 	LikePost(ctx context.Context, userID uuid.UUID, postID uuid.UUID) error
 	UnlikePost(ctx context.Context, userID uuid.UUID, postID uuid.UUID) error
+	IsThreadLiked(ctx context.Context, userID uuid.UUID, threadID uuid.UUID) (bool, error)
+	IsPostLiked(ctx context.Context, userID uuid.UUID, postID uuid.UUID) (bool, error)
 }
 
 type likeRepository struct {
@@ -52,4 +54,28 @@ func (r *likeRepository) UnlikePost(ctx context.Context, userID uuid.UUID, postI
 	return r.db.WithContext(ctx).
 		Where("user_id = ? AND post_id = ?", userID, postID).
 		Delete(&model.PostLike{}).Error
+}
+
+func (r *likeRepository) IsThreadLiked(ctx context.Context, userID uuid.UUID, threadID uuid.UUID) (bool, error) {
+	var count int64
+	err := r.db.WithContext(ctx).
+		Model(&model.ThreadLike{}).
+		Where("user_id = ? AND thread_id = ?", userID, threadID).
+		Count(&count).Error
+	if err != nil {
+		return false, err
+	}
+	return count > 0, nil
+}
+
+func (r *likeRepository) IsPostLiked(ctx context.Context, userID uuid.UUID, postID uuid.UUID) (bool, error) {
+	var count int64
+	err := r.db.WithContext(ctx).
+		Model(&model.PostLike{}).
+		Where("user_id = ? AND post_id = ?", userID, postID).
+		Count(&count).Error
+	if err != nil {
+		return false, err
+	}
+	return count > 0, nil
 }
