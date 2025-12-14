@@ -730,9 +730,58 @@ Unlike sebuah post.
 **Response (200):**
 ```json
 { "message": "post unliked" }
-``` Hanya pemilik atau admin.
+```
 
-**Response (200):** `{"message": "post deleted successfully"}`
+### 18. ✅ DELETE /api/posts/:id (Authenticated User)
+
+Menghapus post. Hanya pemilik atau admin.
+
+**Response (200):**
+
+```json
+{
+  "message": "post deleted successfully"
+}
+```
+
+### 23. ✅ GET /api/threads/:slug (Authenticated User)
+
+Mendapatkan detail thread berdasarkan slug. Endpoint ini juga akan otomatis menambahkan view count (+1) untuk thread tersebut secara asynchronous.
+
+**Headers:**
+
+```
+Authorization: Bearer <user_token>
+```
+
+**URL Parameter:**
+
+- `slug`: String slug dari thread (contoh: `judul-thread-yang-panjang`).
+
+**Response (200):**
+
+```json
+{
+  "id": "uuid...",
+  "category_name": "Teknologi",
+  "title": "Tutorial Golang",
+  "slug": "tutorial-golang",
+  "content": "Isi content...",
+  "audience": "semua",
+  "views": 101,
+  "author": "johndoe",
+  "attachments": [],
+  "created_at": "2024-01-01 10:00:00"
+}
+```
+
+**Response (404):**
+
+```json
+{
+  "thread not found": "record not found"
+}
+```
 
 ## Catatan Keamanan
 
