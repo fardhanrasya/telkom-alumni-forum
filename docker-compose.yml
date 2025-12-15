@@ -55,6 +55,8 @@ services:
       dockerfile: Dockerfile
     container_name: telkom-forum-app
     environment:
+      # App Environment
+      APP_ENV: ${APP_ENV:-development} 
       # Database configuration
       DB_HOST: postgres
       DB_USER: ${DB_USER:-postgres}

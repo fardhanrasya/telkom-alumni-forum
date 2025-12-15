@@ -765,6 +765,7 @@ Authorization: Bearer <user_token>
   "content": "Isi content...",
   "audience": "semua",
   "views": 101,
+  "likes_count": 10,
   "author": "johndoe",
   "attachments": [],
   "created_at": "2024-01-01 10:00:00"
