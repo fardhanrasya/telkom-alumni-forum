@@ -69,6 +69,14 @@ func (s *cloudinaryStorage) UploadImage(ctx context.Context, r io.Reader, folder
 		Overwrite:      api.Bool(false),
 	}
 
+	// Apply WebP conversion and compression only for images
+	ext := strings.ToLower(filepath.Ext(fileName))
+	switch ext {
+	case ".jpg", ".jpeg", ".png", ".bmp", ".tiff", ".gif", ".webp":
+		params.Format = "webp"
+		params.Transformation = "q_auto"
+	}
+
 	resp, err := s.cld.Upload.Upload(ctx, r, params)
 	if err != nil {
 		return "", fmt.Errorf("failed to upload image to cloudinary: %w", err)
