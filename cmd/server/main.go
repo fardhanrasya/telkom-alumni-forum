@@ -85,7 +85,7 @@ func main() {
 	}
 
 	postRepo := repository.NewPostRepository(db)
-	postService := service.NewPostService(postRepo, threadRepo, userRepo, attachmentRepo, likeService, imageStorage)
+	postService := service.NewPostService(postRepo, threadRepo, userRepo, attachmentRepo, likeService, imageStorage, redisClient)
 	postHandler := handler.NewPostHandler(postService)
 
 	// Start Like Worker

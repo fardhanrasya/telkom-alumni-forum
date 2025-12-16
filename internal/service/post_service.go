@@ -3,12 +3,14 @@ package service
 import (
 	"context"
 	"fmt"
+	"time"
 
 	"anoa.com/telkomalumiforum/internal/dto"
 	"anoa.com/telkomalumiforum/internal/model"
 	"anoa.com/telkomalumiforum/internal/repository"
 	"anoa.com/telkomalumiforum/pkg/storage"
 	"github.com/google/uuid"
+	"github.com/redis/go-redis/v9"
 )
 
 type PostService interface {
@@ -26,9 +28,10 @@ type postService struct {
 	attachmentRepo repository.AttachmentRepository
 	likeService    LikeService
 	fileStorage    storage.ImageStorage
+	redisClient    *redis.Client
 }
 
-func NewPostService(postRepo repository.PostRepository, threadRepo repository.ThreadRepository, userRepo repository.UserRepository, attachmentRepo repository.AttachmentRepository, likeService LikeService, fileStorage storage.ImageStorage) PostService {
+func NewPostService(postRepo repository.PostRepository, threadRepo repository.ThreadRepository, userRepo repository.UserRepository, attachmentRepo repository.AttachmentRepository, likeService LikeService, fileStorage storage.ImageStorage, redisClient *redis.Client) PostService {
 	return &postService{
 		postRepo:       postRepo,
 		threadRepo:     threadRepo,
@@ -36,19 +39,49 @@ func NewPostService(postRepo repository.PostRepository, threadRepo repository.Th
 		attachmentRepo: attachmentRepo,
 		likeService:    likeService,
 		fileStorage:    fileStorage,
+		redisClient:    redisClient,
 	}
 }
 
 func (s *postService) CreatePost(ctx context.Context, userID uuid.UUID, req dto.CreatePostRequest) (*dto.PostResponse, error) {
+	// Global Cooldown: 5 seconds
+	allowed, err := CheckAndSetRateLimit(ctx, s.redisClient, userID, "global", 5*time.Second)
+	if err != nil {
+		return nil, fmt.Errorf("failed to check rate limit: %w", err)
+	}
+	if !allowed {
+		ttl, _ := GetRateLimitTTL(ctx, s.redisClient, userID, "global")
+		return nil, fmt.Errorf("you are doing that too fast. Please wait %.0f seconds", ttl.Seconds())
+	}
+
+	// 2. Post-specific Cooldown: 15 seconds
+	allowed, err = CheckAndSetRateLimit(ctx, s.redisClient, userID, "post", 15*time.Second)
+	if err != nil {
+		_ = ClearRateLimit(ctx, s.redisClient, userID, "global") // Rollback global
+		return nil, fmt.Errorf("failed to check rate limit: %w", err)
+	}
+	if !allowed {
+		_ = ClearRateLimit(ctx, s.redisClient, userID, "global") // Rollback global
+		ttl, _ := GetRateLimitTTL(ctx, s.redisClient, userID, "post")
+		return nil, fmt.Errorf("you can only create one post every 15 seconds. Please wait %.0f seconds", ttl.Seconds())
+	}
+
+	// Defer rollback in case of creation failure
+	creationFailed := true
+	defer func() {
+		if creationFailed {
+			_ = ClearRateLimit(ctx, s.redisClient, userID, "global")
+			_ = ClearRateLimit(ctx, s.redisClient, userID, "post")
+		}
+	}()
+
 	threadID, err := uuid.Parse(req.ThreadID)
 	if err != nil {
 		return nil, fmt.Errorf("invalid thread id")
 	}
 
 	// Verify Thread Exists
-	thread, err := s.threadRepo.FindByID(ctx, threadID) // Reusing FindByID which we added earlier? Or FindBySlug?
-	// Wait, ThreadRepo only had FindBySlug, FindAll, Create, Delete, FindByID.
-	// We added FindByID in previous turn. So it should be fine.
+	thread, err := s.threadRepo.FindByID(ctx, threadID)
 	if err != nil || thread == nil {
 		return nil, fmt.Errorf("thread not found")
 	}
@@ -82,7 +115,7 @@ func (s *postService) CreatePost(ctx context.Context, userID uuid.UUID, req dto.
 		if err := s.attachmentRepo.UpdatePostID(ctx, req.AttachmentIDs, post.ID, userID); err != nil {
 			return nil, err
 		}
-		
+
 		// Reload post to get attachments
 		reloaded, err := s.postRepo.FindByID(ctx, post.ID)
 		if err == nil {
@@ -93,6 +126,9 @@ func (s *postService) CreatePost(ctx context.Context, userID uuid.UUID, req dto.
 		user, _ := s.userRepo.FindByID(ctx, userID.String())
 		post.User = *user
 	}
+
+	// Everything succeeded, don't roll back the rate limits.
+	creationFailed = false
 
 	return s.mapToResponse(post), nil
 }
@@ -106,7 +142,7 @@ func (s *postService) GetPostsByThreadID(ctx context.Context, threadID uuid.UUID
 	}
 
 	offset := (filter.Page - 1) * filter.Limit
-	
+
 	posts, total, err := s.postRepo.FindByThreadID(ctx, threadID, offset, filter.Limit)
 	if err != nil {
 		return nil, err
@@ -116,7 +152,7 @@ func (s *postService) GetPostsByThreadID(ctx context.Context, threadID uuid.UUID
 	for _, p := range posts {
 		responses = append(responses, *s.mapToResponse(p))
 	}
-	
+
 	// Create empty slice if nil to ensure JSON array output [] instead of null
 	if responses == nil {
 		responses = []dto.PostResponse{}
@@ -187,7 +223,7 @@ func (s *postService) UpdatePost(ctx context.Context, userID uuid.UUID, postID u
 	if err := s.postRepo.Update(ctx, post); err != nil {
 		return nil, err
 	}
-	
+
 	// Reload to get updated attachments for response
 	updatedPost, err := s.postRepo.FindByID(ctx, post.ID)
 	if err == nil {

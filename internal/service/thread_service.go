@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"strings"
+	"time"
 
 	"anoa.com/telkomalumiforum/internal/dto"
 	"anoa.com/telkomalumiforum/internal/model"
@@ -49,6 +50,38 @@ func NewThreadService(threadRepo repository.ThreadRepository, categoryRepo repos
 }
 
 func (s *threadService) CreateThread(ctx context.Context, userID uuid.UUID, req dto.CreateThreadRequest) error {
+	// Rate Limiting
+	// 1. Global Cooldown: 5 seconds
+	allowed, err := CheckAndSetRateLimit(ctx, s.redisClient, userID, "global", 5*time.Second)
+	if err != nil {
+		return fmt.Errorf("failed to check rate limit: %w", err)
+	}
+	if !allowed {
+		ttl, _ := GetRateLimitTTL(ctx, s.redisClient, userID, "global")
+		return fmt.Errorf("you are doing that too fast. Please wait %.0f seconds", ttl.Seconds())
+	}
+
+	// 2. Thread-specific Cooldown: 5 minutes
+	allowed, err = CheckAndSetRateLimit(ctx, s.redisClient, userID, "thread", 5*time.Minute)
+	if err != nil {
+		_ = ClearRateLimit(ctx, s.redisClient, userID, "global") // Rollback global
+		return fmt.Errorf("failed to check rate limit: %w", err)
+	}
+	if !allowed {
+		_ = ClearRateLimit(ctx, s.redisClient, userID, "global") // Rollback global
+		ttl, _ := GetRateLimitTTL(ctx, s.redisClient, userID, "thread")
+		return fmt.Errorf("you can only create one thread every 5 minutes. Please wait %.0f minutes", ttl.Minutes())
+	}
+
+	// Defer rollback in case of creation failure
+	creationFailed := true
+	defer func() {
+		if creationFailed {
+			_ = ClearRateLimit(ctx, s.redisClient, userID, "global")
+			_ = ClearRateLimit(ctx, s.redisClient, userID, "thread")
+		}
+	}()
+
 	user, err := s.userRepo.FindByID(ctx, userID.String())
 	if err != nil {
 		return fmt.Errorf("user not found")
@@ -103,6 +136,9 @@ func (s *threadService) CreateThread(ctx context.Context, userID uuid.UUID, req 
 			return err
 		}
 	}
+
+	// Everything succeeded, don't roll back the rate limits.
+	creationFailed = false
 
 	return nil
 }
