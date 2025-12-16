@@ -70,6 +70,8 @@ services:
       JWT_SECRET: ${JWT_SECRET}
       # Application port
       PORT: ${PORT:-8080}
+      # CORS Configuration
+      ALLOWED_ORIGINS: ${ALLOWED_ORIGINS:-http://localhost:3000}
       # Cloudinary configuration (optional - set these in .env file)
       CLOUDINARY_URL: ${CLOUDINARY_URL:-}
       CLOUDINARY_CLOUD_NAME: ${CLOUDINARY_CLOUD_NAME:-}

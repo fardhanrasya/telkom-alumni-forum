@@ -4,6 +4,7 @@ import (
 	"context"
 	"log"
 	"os"
+	"strings"
 	"time"
 
 	"anoa.com/telkomalumiforum/internal/handler"
@@ -94,9 +95,16 @@ func main() {
 
 	router := gin.Default()
 
-	router.Use(cors.New(cors.Config{
+	allowedOrigins := os.Getenv("ALLOWED_ORIGINS")
+	var origins []string
+	if allowedOrigins != "" {
+		origins = strings.Split(allowedOrigins, ",")
+	} else {
+		origins = []string{"http://localhost:3000"}
+	}
 
-		AllowOrigins: []string{"http://localhost:3000"},
+	router.Use(cors.New(cors.Config{
+		AllowOrigins: origins,
 
 		AllowMethods: []string{"GET", "POST", "PUT", "PATCH", "DELETE", "HEAD", "OPTIONS"},
 
