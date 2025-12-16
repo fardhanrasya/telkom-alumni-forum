@@ -4,6 +4,7 @@ import (
 	"context"
 	"log"
 	"os"
+	"strings"
 	"time"
 
 	"anoa.com/telkomalumiforum/internal/handler"
@@ -94,14 +95,15 @@ func main() {
 
 	router := gin.Default()
 
+	corsOrigin := os.Getenv("CORS_ORIGIN")
+	if corsOrigin == "" {
+		corsOrigin = "http://localhost:3000"
+	}
+
 	router.Use(cors.New(cors.Config{
-
-		AllowOrigins: []string{"http://localhost:3000"},
-
-		AllowMethods: []string{"GET", "POST", "PUT", "PATCH", "DELETE", "HEAD", "OPTIONS"},
-
-		AllowHeaders: []string{"Origin", "Content-Type", "Authorization"},
-
+		AllowOrigins:     strings.Split(corsOrigin, ","),
+		AllowMethods:     []string{"GET", "POST", "PUT", "PATCH", "DELETE", "HEAD", "OPTIONS"},
+		AllowHeaders:     []string{"Origin", "Content-Type", "Authorization"},
 		ExposeHeaders:    []string{"Content-Length"},
 		AllowCredentials: true,
 		MaxAge:           12 * time.Hour,
