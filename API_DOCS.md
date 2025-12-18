@@ -711,10 +711,21 @@ Authorization: Bearer <user_token>
 {
   "data": [
     {
-      "id": "uuid...",
-      "content": "Reply 1",
-      "attachments": [],
-      "author": "user1"
+      "id": "uuid-v4-string",
+      "thread_id": "uuid-v7-string",
+      "parent_id": null,
+      "content": "Ini adalah balasan.",
+      "author": "username_user",
+      "attachments": [
+        {
+          "id": 1,
+          "file_url": "https://res.cloudinary.com/.../image.jpg",
+          "file_type": "image/jpeg"
+        }
+      ],
+      "likes_count": 0,
+      "created_at": "2024-01-01 10:00:00",
+      "updated_at": "2024-01-01 10:00:00"
     }
   ],
   "meta": {
