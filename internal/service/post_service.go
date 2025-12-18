@@ -44,8 +44,9 @@ func NewPostService(postRepo repository.PostRepository, threadRepo repository.Th
 }
 
 func (s *postService) CreatePost(ctx context.Context, userID uuid.UUID, req dto.CreatePostRequest) (*dto.PostResponse, error) {
-	// Global Cooldown: 5 seconds
-	allowed, err := CheckAndSetRateLimit(ctx, s.redisClient, userID, "global", 5*time.Second)
+	// Global Cooldown
+	globalLimit := GetDurationFromEnv("RATE_LIMIT_GLOBAL", 5*time.Second)
+	allowed, err := CheckAndSetRateLimit(ctx, s.redisClient, userID, "global", globalLimit)
 	if err != nil {
 		return nil, fmt.Errorf("failed to check rate limit: %w", err)
 	}
@@ -57,8 +58,9 @@ func (s *postService) CreatePost(ctx context.Context, userID uuid.UUID, req dto.
 		}
 	}
 
-	// 2. Post-specific Cooldown: 15 seconds
-	allowed, err = CheckAndSetRateLimit(ctx, s.redisClient, userID, "post", 15*time.Second)
+	// 2. Post-specific Cooldown
+	postLimit := GetDurationFromEnv("RATE_LIMIT_POST", 15*time.Second)
+	allowed, err = CheckAndSetRateLimit(ctx, s.redisClient, userID, "post", postLimit)
 	if err != nil {
 		_ = ClearRateLimit(ctx, s.redisClient, userID, "global") // Rollback global
 		return nil, fmt.Errorf("failed to check rate limit: %w", err)
@@ -67,7 +69,7 @@ func (s *postService) CreatePost(ctx context.Context, userID uuid.UUID, req dto.
 		_ = ClearRateLimit(ctx, s.redisClient, userID, "global") // Rollback global
 		ttl, _ := GetRateLimitTTL(ctx, s.redisClient, userID, "post")
 		return nil, &RateLimitError{
-			Message:    fmt.Sprintf("you can only create one post every 15 seconds. Please wait %.0f seconds", ttl.Seconds()),
+			Message:    fmt.Sprintf("you can only create one post every %.0f seconds. Please wait %.0f seconds", postLimit.Seconds(), ttl.Seconds()),
 			RetryAfter: ttl,
 		}
 	}

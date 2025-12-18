@@ -52,8 +52,9 @@ func NewThreadService(threadRepo repository.ThreadRepository, categoryRepo repos
 
 func (s *threadService) CreateThread(ctx context.Context, userID uuid.UUID, req dto.CreateThreadRequest) error {
 	// Rate Limiting
-	// 1. Global Cooldown: 5 seconds
-	allowed, err := CheckAndSetRateLimit(ctx, s.redisClient, userID, "global", 5*time.Second)
+	// 1. Global Cooldown
+	globalLimit := GetDurationFromEnv("RATE_LIMIT_GLOBAL", 5*time.Second)
+	allowed, err := CheckAndSetRateLimit(ctx, s.redisClient, userID, "global", globalLimit)
 	if err != nil {
 		return fmt.Errorf("failed to check rate limit: %w", err)
 	}
@@ -65,8 +66,9 @@ func (s *threadService) CreateThread(ctx context.Context, userID uuid.UUID, req 
 		}
 	}
 
-	// 2. Thread-specific Cooldown: 5 minutes
-	allowed, err = CheckAndSetRateLimit(ctx, s.redisClient, userID, "thread", 5*time.Minute)
+	// 2. Thread-specific Cooldown
+	threadLimit := GetDurationFromEnv("RATE_LIMIT_THREAD", 5*time.Minute)
+	allowed, err = CheckAndSetRateLimit(ctx, s.redisClient, userID, "thread", threadLimit)
 	if err != nil {
 		_ = ClearRateLimit(ctx, s.redisClient, userID, "global") // Rollback global
 		return fmt.Errorf("failed to check rate limit: %w", err)
@@ -75,7 +77,7 @@ func (s *threadService) CreateThread(ctx context.Context, userID uuid.UUID, req 
 		_ = ClearRateLimit(ctx, s.redisClient, userID, "global") // Rollback global
 		ttl, _ := GetRateLimitTTL(ctx, s.redisClient, userID, "thread")
 		return &RateLimitError{
-			Message:    fmt.Sprintf("you can only create one thread every 5 minutes. Please wait %.0f minutes", ttl.Minutes()),
+			Message:    fmt.Sprintf("you can only create one thread every %.0f minutes. Please wait %.0f minutes", threadLimit.Minutes(), ttl.Minutes()),
 			RetryAfter: ttl,
 		}
 	}

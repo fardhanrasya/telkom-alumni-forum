@@ -3,6 +3,8 @@ package service
 import (
 	"context"
 	"fmt"
+	"os"
+	"strconv"
 	"time"
 
 	"github.com/google/uuid"
@@ -19,7 +21,7 @@ func (e *RateLimitError) Error() string {
 }
 
 func CheckAndSetRateLimit(ctx context.Context, rdb *redis.Client, userID uuid.UUID, action string, limit time.Duration) (bool, error) {
-	if rdb == nil {
+	if rdb == nil || limit <= 0 {
 		return true, nil
 	}
 
@@ -38,7 +40,19 @@ func GetRateLimitTTL(ctx context.Context, rdb *redis.Client, userID uuid.UUID, a
 		return 0, nil
 	}
 	key := fmt.Sprintf("rate_limit:user:%s:%s", userID.String(), action)
-	return rdb.TTL(ctx, key).Result()
+	ttl, err := rdb.TTL(ctx, key).Result()
+	if err != nil {
+		return 0, err
+	}
+
+	// If key exists but has no expiration (persistent), it might be a bug or misconfiguration.
+	// Clean it up so the user isn't blocked forever.
+	if ttl == -1 {
+		rdb.Del(ctx, key)
+		return 0, nil
+	}
+
+	return ttl, nil
 }
 
 func ClearRateLimit(ctx context.Context, rdb *redis.Client, userID uuid.UUID, action string) error {
@@ -48,4 +62,23 @@ func ClearRateLimit(ctx context.Context, rdb *redis.Client, userID uuid.UUID, ac
 	key := fmt.Sprintf("rate_limit:user:%s:%s", userID.String(), action)
 	_, err := rdb.Del(ctx, key).Result()
 	return err
+}
+
+func GetDurationFromEnv(key string, defaultDuration time.Duration) time.Duration {
+	valStr := os.Getenv(key)
+	if valStr == "" {
+		return defaultDuration
+	}
+
+	// Try parsing as integer (seconds)
+	if valInt, err := strconv.Atoi(valStr); err == nil {
+		return time.Duration(valInt) * time.Second
+	}
+
+	// Try parsing as duration string (e.g., "5m", "30s")
+	if valDur, err := time.ParseDuration(valStr); err == nil {
+		return valDur
+	}
+
+	return defaultDuration
 }
