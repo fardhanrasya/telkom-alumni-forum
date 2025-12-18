@@ -17,6 +17,7 @@ import (
 type ThreadService interface {
 	CreateThread(ctx context.Context, userID uuid.UUID, req dto.CreateThreadRequest) error
 	GetAllThreads(ctx context.Context, userID uuid.UUID, filter dto.ThreadFilter) (*dto.PaginatedThreadResponse, error)
+	GetMyThreads(ctx context.Context, userID uuid.UUID, page, limit int) (*dto.PaginatedThreadResponse, error)
 	GetThreadBySlug(ctx context.Context, slug string) (*dto.ThreadResponse, error)
 	DeleteThread(ctx context.Context, userID uuid.UUID, threadID uuid.UUID) error
 	UpdateThread(ctx context.Context, userID uuid.UUID, threadID uuid.UUID, req dto.UpdateThreadRequest) error
@@ -259,6 +260,73 @@ func (s *threadService) GetAllThreads(ctx context.Context, userID uuid.UUID, fil
 			TotalPages:  totalPages,
 			TotalItems:  total,
 			Limit:       filter.Limit,
+		},
+	}, nil
+}
+
+func (s *threadService) GetMyThreads(ctx context.Context, userID uuid.UUID, page, limit int) (*dto.PaginatedThreadResponse, error) {
+	if page < 1 {
+		page = 1
+	}
+	if limit < 1 {
+		limit = 10
+	}
+	if limit > 50 {
+		limit = 50
+	}
+
+	offset := (page - 1) * limit
+	threads, total, err := s.threadRepo.FindByUserID(ctx, userID, offset, limit)
+	if err != nil {
+		return nil, err
+	}
+
+	var threadResponses []dto.ThreadResponse
+	for _, thread := range threads {
+		var attachments []dto.AttachmentResponse
+		for _, att := range thread.Attachments {
+			attachments = append(attachments, dto.AttachmentResponse{
+				ID:       att.ID,
+				FileURL:  att.FileURL,
+				FileType: att.FileType,
+			})
+		}
+
+		authorName := "Unknown"
+		if thread.User.Username != "" {
+			authorName = thread.User.Username
+		}
+
+		likesCount, _ := s.likeService.GetThreadLikes(ctx, thread.ID)
+
+		resp := dto.ThreadResponse{
+			ID:           thread.ID,
+			CategoryName: thread.Category.Name,
+			Title:        thread.Title,
+			Slug:         thread.Slug,
+			Content:      thread.Content,
+			Audience:     thread.Audience,
+			Views:        thread.Views,
+			Author:       authorName,
+			Attachments:  attachments,
+			LikesCount:   likesCount,
+			CreatedAt:    thread.CreatedAt.Format("2006-01-02 15:04:05"),
+		}
+		threadResponses = append(threadResponses, resp)
+	}
+
+	totalPages := int(total) / limit
+	if int(total)%limit != 0 {
+		totalPages++
+	}
+
+	return &dto.PaginatedThreadResponse{
+		Data: threadResponses,
+		Meta: dto.PaginationMeta{
+			CurrentPage: page,
+			TotalPages:  totalPages,
+			TotalItems:  total,
+			Limit:       limit,
 		},
 	}, nil
 }

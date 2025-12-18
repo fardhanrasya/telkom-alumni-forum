@@ -13,6 +13,7 @@ type ThreadRepository interface {
 	FindBySlug(ctx context.Context, slug string) (*model.Thread, error)
 	FindByID(ctx context.Context, id uuid.UUID) (*model.Thread, error)
 	FindAll(ctx context.Context, categoryID *uuid.UUID, search string, audiences []string, sortBy string, offset, limit int) ([]*model.Thread, int64, error)
+	FindByUserID(ctx context.Context, userID uuid.UUID, offset, limit int) ([]*model.Thread, int64, error)
 	Update(ctx context.Context, thread *model.Thread) error
 	Delete(ctx context.Context, id uuid.UUID) error
 }
@@ -90,6 +91,28 @@ func (r *threadRepository) FindAll(ctx context.Context, categoryID *uuid.UUID, s
 	}
 
 	if err := query.Offset(offset).Limit(limit).Find(&threads).Error; err != nil {
+		return nil, 0, err
+	}
+
+	return threads, total, nil
+}
+
+func (r *threadRepository) FindByUserID(ctx context.Context, userID uuid.UUID, offset, limit int) ([]*model.Thread, int64, error) {
+	var threads []*model.Thread
+	var total int64
+
+	query := r.db.WithContext(ctx).
+		Preload("Category").
+		Preload("User").
+		Preload("User.Profile").
+		Preload("Attachments").
+		Where("user_id = ?", userID)
+
+	if err := query.Model(&model.Thread{}).Count(&total).Error; err != nil {
+		return nil, 0, err
+	}
+
+	if err := query.Order("created_at DESC").Offset(offset).Limit(limit).Find(&threads).Error; err != nil {
 		return nil, 0, err
 	}
 

@@ -81,6 +81,41 @@ func (h *ThreadHandler) GetAllThreads(c *gin.Context) {
 	c.JSON(http.StatusOK, threads)
 }
 
+func (h *ThreadHandler) GetMyThreads(c *gin.Context) {
+	var filter dto.ThreadFilter
+	if err := c.ShouldBindQuery(&filter); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	if filter.Page == 0 {
+		filter.Page = 1
+	}
+	if filter.Limit == 0 {
+		filter.Limit = 10
+	}
+
+	userIDStr, exists := c.Get("user_id")
+	if !exists {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})
+		return
+	}
+
+	userID, err := uuid.Parse(userIDStr.(string))
+	if err != nil {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "invalid user id"})
+		return
+	}
+
+	threads, err := h.service.GetMyThreads(c.Request.Context(), userID, filter.Page, filter.Limit)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, threads)
+}
+
 func (h *ThreadHandler) DeleteThread(c *gin.Context) {
 	idStr := c.Param("thread_id")
 	threadID, err := uuid.Parse(idStr)

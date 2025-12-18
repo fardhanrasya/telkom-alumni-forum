@@ -143,6 +143,7 @@ func main() {
 
 		api.POST("/threads", threadHandler.CreateThread)
 		api.GET("/threads", threadHandler.GetAllThreads)
+		api.GET("/threads/me", threadHandler.GetMyThreads)
 		api.GET("/threads/slug/:slug", threadHandler.GetThreadBySlug)
 		api.PUT("/threads/:thread_id", threadHandler.UpdateThread)
 		api.DELETE("/threads/:thread_id", threadHandler.DeleteThread)

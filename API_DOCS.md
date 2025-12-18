@@ -300,7 +300,54 @@ Content-Type: application/json
 
 Mendapatkan daftar thread dengan filtering dan pagination.
 
-### 9.1 ✅ PUT /api/threads/:id (Authenticated User)
+### 9. ✅ GET /api/threads (Authenticated User)
+
+Mendapatkan daftar thread dengan filtering dan pagination.
+
+### 9.1 ✅ GET /api/threads/me (Authenticated User)
+
+Mendapatkan daftar thread yang dibuat oleh user yang sedang login, dengan pagination.
+
+**Headers:**
+
+```
+Authorization: Bearer <user_token>
+```
+
+**Query Parameter:**
+
+- `page` (optional): int, default 1.
+- `limit` (optional): int, default 10.
+
+**Response (200):**
+
+```json
+{
+  "data": [
+    {
+      "id": "uuid...",
+      "category_name": "Teknologi",
+      "title": "My Thread",
+      "slug": "my-thread",
+      "content": "Isi content...",
+      "audience": "semua",
+      "views": 50,
+      "author": "me",
+      "attachments": [],
+      "likes_count": 5,
+      "created_at": "2024-01-01 10:00:00"
+    }
+  ],
+  "meta": {
+    "current_page": 1,
+    "total_pages": 1,
+    "total_items": 1,
+    "limit": 10
+  }
+}
+```
+
+### 9.2 ✅ PUT /api/threads/:id (Authenticated User)
 
 Mengupdate thread (judul, konten, kategori, audience, dan attachment).
 
