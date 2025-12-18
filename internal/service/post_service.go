@@ -51,7 +51,10 @@ func (s *postService) CreatePost(ctx context.Context, userID uuid.UUID, req dto.
 	}
 	if !allowed {
 		ttl, _ := GetRateLimitTTL(ctx, s.redisClient, userID, "global")
-		return nil, fmt.Errorf("you are doing that too fast. Please wait %.0f seconds", ttl.Seconds())
+		return nil, &RateLimitError{
+			Message:    fmt.Sprintf("you are doing that too fast. Please wait %.0f seconds", ttl.Seconds()),
+			RetryAfter: ttl,
+		}
 	}
 
 	// 2. Post-specific Cooldown: 15 seconds
@@ -63,7 +66,10 @@ func (s *postService) CreatePost(ctx context.Context, userID uuid.UUID, req dto.
 	if !allowed {
 		_ = ClearRateLimit(ctx, s.redisClient, userID, "global") // Rollback global
 		ttl, _ := GetRateLimitTTL(ctx, s.redisClient, userID, "post")
-		return nil, fmt.Errorf("you can only create one post every 15 seconds. Please wait %.0f seconds", ttl.Seconds())
+		return nil, &RateLimitError{
+			Message:    fmt.Sprintf("you can only create one post every 15 seconds. Please wait %.0f seconds", ttl.Seconds()),
+			RetryAfter: ttl,
+		}
 	}
 
 	// Defer rollback in case of creation failure

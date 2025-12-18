@@ -2,6 +2,7 @@ package handler
 
 import (
 	"context"
+	"fmt"
 	"net/http"
 
 	"anoa.com/telkomalumiforum/internal/dto"
@@ -38,6 +39,11 @@ func (h *ThreadHandler) CreateThread(c *gin.Context) {
 	}
 
 	if err := h.service.CreateThread(c.Request.Context(), userID, req); err != nil {
+		if rateLimitErr, ok := err.(*service.RateLimitError); ok {
+			c.Header("Retry-After", fmt.Sprintf("%.0f", rateLimitErr.RetryAfter.Seconds()))
+			c.JSON(http.StatusTooManyRequests, gin.H{"error": rateLimitErr.Message})
+			return
+		}
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}

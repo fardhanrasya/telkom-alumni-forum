@@ -9,6 +9,15 @@ import (
 	"github.com/redis/go-redis/v9"
 )
 
+type RateLimitError struct {
+	Message    string
+	RetryAfter time.Duration
+}
+
+func (e *RateLimitError) Error() string {
+	return e.Message
+}
+
 func CheckAndSetRateLimit(ctx context.Context, rdb *redis.Client, userID uuid.UUID, action string, limit time.Duration) (bool, error) {
 	if rdb == nil {
 		return true, nil

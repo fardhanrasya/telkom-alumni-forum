@@ -59,7 +59,10 @@ func (s *threadService) CreateThread(ctx context.Context, userID uuid.UUID, req 
 	}
 	if !allowed {
 		ttl, _ := GetRateLimitTTL(ctx, s.redisClient, userID, "global")
-		return fmt.Errorf("you are doing that too fast. Please wait %.0f seconds", ttl.Seconds())
+		return &RateLimitError{
+			Message:    fmt.Sprintf("you are doing that too fast. Please wait %.0f seconds", ttl.Seconds()),
+			RetryAfter: ttl,
+		}
 	}
 
 	// 2. Thread-specific Cooldown: 5 minutes
@@ -71,7 +74,10 @@ func (s *threadService) CreateThread(ctx context.Context, userID uuid.UUID, req 
 	if !allowed {
 		_ = ClearRateLimit(ctx, s.redisClient, userID, "global") // Rollback global
 		ttl, _ := GetRateLimitTTL(ctx, s.redisClient, userID, "thread")
-		return fmt.Errorf("you can only create one thread every 5 minutes. Please wait %.0f minutes", ttl.Minutes())
+		return &RateLimitError{
+			Message:    fmt.Sprintf("you can only create one thread every 5 minutes. Please wait %.0f minutes", ttl.Minutes()),
+			RetryAfter: ttl,
+		}
 	}
 
 	// Defer rollback in case of creation failure

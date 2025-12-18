@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"fmt"
 	"net/http"
 
 	"anoa.com/telkomalumiforum/internal/dto"
@@ -45,6 +46,11 @@ func (h *PostHandler) CreatePost(c *gin.Context) {
 
 	resp, err := h.service.CreatePost(c.Request.Context(), userID, req)
 	if err != nil {
+		if rateLimitErr, ok := err.(*service.RateLimitError); ok {
+			c.Header("Retry-After", fmt.Sprintf("%.0f", rateLimitErr.RetryAfter.Seconds()))
+			c.JSON(http.StatusTooManyRequests, gin.H{"error": rateLimitErr.Message})
+			return
+		}
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
