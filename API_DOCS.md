@@ -692,7 +692,7 @@ Content-Type: application/json
 
 ### 16. ✅ GET /api/threads/:thread_id/posts (Authenticated User)
 
-Mendapatkan semua balasan pada thread tertentu dengan pagination.
+Mendapatkan semua balasan pada thread tertentu dalam bentuk *Tree Structure* untuk nested replies. Pagination berlaku untuk *root posts* (parent_id = null).
 
 **Headers:**
 
@@ -714,18 +714,23 @@ Authorization: Bearer <user_token>
       "id": "uuid-v4-string",
       "thread_id": "uuid-v7-string",
       "parent_id": null,
-      "content": "Ini adalah balasan.",
-      "author": "username_user",
-      "attachments": [
-        {
-          "id": 1,
-          "file_url": "https://res.cloudinary.com/.../image.jpg",
-          "file_type": "image/jpeg"
-        }
+      "content": "Ini adalah komentar utama.",
+      "author": "user1",
+      "attachments": [],
+      "likes_count": 2,
+      "replies": [
+          {
+             "id": "uuid-child",
+             "thread_id": "uuid-v7-string",
+             "parent_id": "uuid-v4-string",
+             "content": "Ini adalah balasan.",
+             "author": "user2",
+             "replies": [],
+             "created_at": "..."
+          }
       ],
-      "likes_count": 0,
-      "created_at": "2024-01-01 10:00:00",
-      "updated_at": "2024-01-01 10:00:00"
+      "created_at": "...",
+      "updated_at": "..."
     }
   ],
   "meta": {
@@ -737,7 +742,36 @@ Authorization: Bearer <user_token>
 }
 ```
 
-### 17. ✅ PUT /api/posts/:id (Authenticated User)
+### 17. ✅ GET /api/posts/:id (Authenticated User)
+
+Mendapatkan detail post berdasarkan ID.
+
+**Headers:**
+
+```
+Authorization: Bearer <user_token>
+```
+
+**URL Parameter:**
+- `id`: UUID dari post.
+
+**Response (200):**
+
+```json
+{
+  "id": "uuid...",
+  "thread_id": "uuid...",
+  "parent_id": "uuid... or null",
+  "content": "Content...",
+  "author": "username",
+  "attachments": [],
+  "likes_count": 5,
+  "created_at": "...",
+  "updated_at": "..."
+}
+```
+
+### 18. ✅ PUT /api/posts/:id (Authenticated User)
 
 Mengedit post. Hanya pemilik post yang bisa mengedit. Bisa juga mengupdate attachment.
 
@@ -786,7 +820,7 @@ Unlike sebuah post.
 { "message": "post unliked" }
 ```
 
-### 18. ✅ DELETE /api/posts/:id (Authenticated User)
+### 26. ✅ DELETE /api/posts/:id (Authenticated User)
 
 Menghapus post. Hanya pemilik atau admin.
 

@@ -12,6 +12,7 @@ type PostRepository interface {
 	Create(ctx context.Context, post *model.Post) error
 	FindByID(ctx context.Context, id uuid.UUID) (*model.Post, error)
 	FindByThreadID(ctx context.Context, threadID uuid.UUID, offset, limit int) ([]*model.Post, int64, error)
+	FindAllByThreadID(ctx context.Context, threadID uuid.UUID) ([]*model.Post, error)
 	Update(ctx context.Context, post *model.Post) error
 	Delete(ctx context.Context, id uuid.UUID) error
 }
@@ -61,6 +62,20 @@ func (r *postRepository) FindByThreadID(ctx context.Context, threadID uuid.UUID,
 	}
 
 	return posts, total, nil
+}
+
+func (r *postRepository) FindAllByThreadID(ctx context.Context, threadID uuid.UUID) ([]*model.Post, error) {
+	var posts []*model.Post
+	
+	err := r.db.WithContext(ctx).
+		Preload("User").
+		Preload("User.Profile").
+		Preload("Attachments").
+		Where("thread_id = ?", threadID).
+		Order("created_at ASC").
+		Find(&posts).Error
+		
+	return posts, err
 }
 
 func (r *postRepository) Update(ctx context.Context, post *model.Post) error {

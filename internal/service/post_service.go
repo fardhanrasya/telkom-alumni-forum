@@ -149,34 +149,65 @@ func (s *postService) GetPostsByThreadID(ctx context.Context, threadID uuid.UUID
 		filter.Limit = 10
 	}
 
-	offset := (filter.Page - 1) * filter.Limit
-
-	posts, total, err := s.postRepo.FindByThreadID(ctx, threadID, offset, filter.Limit)
+	// Fetch ALL posts for the thread to build the tree
+	allPosts, err := s.postRepo.FindAllByThreadID(ctx, threadID)
 	if err != nil {
 		return nil, err
 	}
 
-	var responses []dto.PostResponse
-	for _, p := range posts {
-		responses = append(responses, *s.mapToResponse(p))
+	// 1. Convert all to DTOs and store in map
+	postMap := make(map[uuid.UUID]*dto.PostResponse)
+	for _, p := range allPosts {
+		postMap[p.ID] = s.mapToResponse(p)
 	}
 
-	// Create empty slice if nil to ensure JSON array output [] instead of null
-	if responses == nil {
-		responses = []dto.PostResponse{}
+	// 2. Build Tree
+	var roots []*dto.PostResponse
+	for _, p := range allPosts {
+		node := postMap[p.ID]
+		if p.ParentID == nil {
+			roots = append(roots, node)
+		} else {
+			if parent, exists := postMap[*p.ParentID]; exists {
+				parent.Replies = append(parent.Replies, node)
+			}
+			// If parent doesn't exist (shouldn't happen with valid FKs), we ignore or treat as root.
+			// Currently ignoring to avoid clutter.
+		}
 	}
 
-	totalPages := int(total) / filter.Limit
-	if int(total)%filter.Limit != 0 {
+	// 3. Paginate Roots
+	totalRoots := int64(len(roots))
+	startIndex := (filter.Page - 1) * filter.Limit
+	endIndex := startIndex + filter.Limit
+
+	if startIndex < 0 {
+		startIndex = 0
+	}
+
+	var paginatedRoots []dto.PostResponse
+	if startIndex < int(totalRoots) {
+		if endIndex > int(totalRoots) {
+			endIndex = int(totalRoots)
+		}
+		for _, r := range roots[startIndex:endIndex] {
+			paginatedRoots = append(paginatedRoots, *r)
+		}
+	} else {
+		paginatedRoots = []dto.PostResponse{}
+	}
+
+	totalPages := int(totalRoots) / filter.Limit
+	if int(totalRoots)%filter.Limit != 0 {
 		totalPages++
 	}
 
 	return &dto.PaginatedPostResponse{
-		Data: responses,
+		Data: paginatedRoots,
 		Meta: dto.PaginationMeta{
 			CurrentPage: filter.Page,
 			TotalPages:  totalPages,
-			TotalItems:  total,
+			TotalItems:  totalRoots,
 			Limit:       filter.Limit,
 		},
 	}, nil

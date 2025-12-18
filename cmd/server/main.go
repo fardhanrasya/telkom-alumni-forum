@@ -150,6 +150,7 @@ func main() {
 
 		api.POST("/threads/:thread_id/posts", postHandler.CreatePost)
 		api.GET("/threads/:thread_id/posts", postHandler.GetPostsByThreadID)
+		api.GET("/posts/:post_id", postHandler.GetPostByID)
 		api.PUT("/posts/:post_id", postHandler.UpdatePost)
 		api.DELETE("/posts/:post_id", postHandler.DeletePost)
 
