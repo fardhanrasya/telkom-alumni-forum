@@ -31,7 +31,6 @@ go.sum.tmp
 
 ### Environment / secrets
 .env
-.env.*
 *.local
 
 ### Logs & coverage
