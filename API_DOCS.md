@@ -896,6 +896,106 @@ Mengecek apakah user yang sedang login sudah me-like post tertentu.
 }
 ```
 
+### 26. ✅ GET /api/notifications (Authenticated User)
+
+Mendapatkan daftar notifikasi user yang tersimpan di database.
+
+**Headers:**
+
+```
+Authorization: Bearer <user_token>
+```
+
+**Query Parameter:**
+- `limit` (optional): int, default 20.
+- `offset` (optional): int, default 0.
+
+**Response (200):**
+
+```json
+{
+  "data": [
+    {
+      "id": "uuid...",
+      "user_id": "uuid...",
+      "actor_id": "uuid...",
+      "entity_id": "uuid...",
+      "entity_type": "post", 
+      "entity_slug": "string...",
+      "type": "reply_post",
+      "message": "Someone replied to your post...",
+      "is_read": false,
+      "created_at": "...",
+      "actor": {
+          "id": "uuid...",
+          "username": "budi",
+          "avatar_url": "..."
+      }
+    }
+  ]
+}
+```
+
+### 27. ✅ GET /api/notifications/unread-count (Authenticated User)
+
+Mendapatkan jumlah notifikasi yang belum dibaca.
+
+**Response (200):**
+
+```json
+{
+  "count": 5
+}
+```
+
+### 28. ✅ PUT /api/notifications/:id/read (Authenticated User)
+
+Menandai satu notifikasi sebagai sudah dibaca.
+
+**Response (200):**
+
+```json
+{
+  "message": "Marked as read"
+}
+```
+
+### 29. ✅ PUT /api/notifications/read-all (Authenticated User)
+
+Menandai SEMUA notifikasi user sebagai sudah dibaca.
+
+**Response (200):**
+
+```json
+{
+  "message": "All notifications marked as read"
+}
+```
+
+### 30. 🔌 WebSocket /api/notifications/ws
+
+Endpoint WebSocket untuk menerima notifikasi secara Real-time.
+Klien harus melakukan koneksi ke endpoint ini. Karena WebSocket browser API tidak mendukung custom header, token JWT dapat dikirim melalui query parameter `token`.
+
+**URL:**
+`ws://<host>/api/notifications/ws?token=<jwt_token>`
+
+**Event Flow:**
+1. **Connect**: Client terhubung dengan token valid.
+2. **Disconnect**: Client atau Server menutup koneksi.
+3. **On Message**: Server akan mengirim JSON string object `Notification` (sama seperti di GET list) ketika ada event baru.
+
+**Contoh Payload WebSocket (Server to Client):**
+
+```json
+{
+  "id": "new-uuid...",
+  "type": "like_thread",
+  "message": "Someone liked your thread",
+  ...
+}
+```
+
 ## Catatan Keamanan
 
 1. **Admin Only**: Endpoint `/api/admin/*` memerlukan token JWT dari user dengan role `admin`

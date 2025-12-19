@@ -7,6 +7,7 @@ import (
 	"log"
 	"time"
 
+	"anoa.com/telkomalumiforum/internal/model"
 	"anoa.com/telkomalumiforum/internal/repository"
 	"github.com/google/uuid"
 	"github.com/redis/go-redis/v9"
@@ -26,13 +27,19 @@ type LikeService interface {
 
 type likeService struct {
 	redisClient *redis.Client
-	likeRepo    repository.LikeRepository
+	likeRepo            repository.LikeRepository
+	threadRepo          repository.ThreadRepository
+	postRepo            repository.PostRepository
+	notificationService NotificationService
 }
 
-func NewLikeService(redisClient *redis.Client, likeRepo repository.LikeRepository) LikeService {
+func NewLikeService(redisClient *redis.Client, likeRepo repository.LikeRepository, threadRepo repository.ThreadRepository, postRepo repository.PostRepository, notificationService NotificationService) LikeService {
 	return &likeService{
-		redisClient: redisClient,
-		likeRepo:    likeRepo,
+		redisClient:         redisClient,
+		likeRepo:            likeRepo,
+		threadRepo:          threadRepo,
+		postRepo:            postRepo,
+		notificationService: notificationService,
 	}
 }
 
@@ -221,12 +228,53 @@ func (s *likeService) processTask(ctx context.Context, task LikeTask) {
 		case "thread":
 			if task.Action == "like" {
 				opErr = s.likeRepo.LikeThread(ctx, userID, targetID)
+				if opErr == nil {
+					// Notify Thread Author
+					thread, err := s.threadRepo.FindByID(ctx, targetID)
+					if err == nil && thread.UserID != userID {
+						notif := &model.Notification{
+							UserID:     thread.UserID,
+							ActorID:    userID,
+							EntityID:   thread.ID,
+							EntitySlug: thread.Slug,
+							EntityType: "thread",
+							Type:       "like_thread",
+							Message:    "Someone liked your thread",
+						}
+						_ = s.notificationService.CreateNotification(ctx, notif)
+					}
+				}
 			} else {
 				opErr = s.likeRepo.UnlikeThread(ctx, userID, targetID)
 			}
 		case "post":
 			if task.Action == "like" {
 				opErr = s.likeRepo.LikePost(ctx, userID, targetID)
+				if opErr == nil {
+					// Notify Post Author
+					post, err := s.postRepo.FindByID(ctx, targetID)
+					if err == nil && post.UserID != userID {
+						// Need thread for slug
+						// post doesn't usually preload thread unless FindByID does.
+						// Safest is to fetch thread.
+						thread, errThread := s.threadRepo.FindByID(ctx, post.ThreadID)
+						var slug string
+						if errThread == nil {
+							slug = thread.Slug
+						}
+
+						notif := &model.Notification{
+							UserID:     post.UserID,
+							ActorID:    userID,
+							EntityID:   post.ID,
+							EntitySlug: slug,
+							EntityType: "post",
+							Type:       "like_post",
+							Message:    "Someone liked your post",
+						}
+						_ = s.notificationService.CreateNotification(ctx, notif)
+					}
+				}
 			} else {
 				opErr = s.likeRepo.UnlikePost(ctx, userID, targetID)
 			}

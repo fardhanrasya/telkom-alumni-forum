@@ -71,11 +71,17 @@ func main() {
 	attachmentService := service.NewAttachmentService(attachmentRepo, imageStorage)
 	attachmentHandler := handler.NewAttachmentHandler(attachmentService)
 
-	likeRepo := repository.NewLikeRepository(db)
-	likeService := service.NewLikeService(redisClient, likeRepo)
-	likeHandler := handler.NewLikeHandler(likeService)
+	notificationRepo := repository.NewNotificationRepository(db)
+	notificationService := service.NewNotificationService(notificationRepo, redisClient)
+	notificationHandler := handler.NewNotificationHandler(notificationService, redisClient)
 
 	threadRepo := repository.NewThreadRepository(db)
+	postRepo := repository.NewPostRepository(db)
+
+	likeRepo := repository.NewLikeRepository(db)
+	likeService := service.NewLikeService(redisClient, likeRepo, threadRepo, postRepo, notificationService)
+	likeHandler := handler.NewLikeHandler(likeService)
+
 	threadService := service.NewThreadService(threadRepo, categoryRepo, userRepo, attachmentRepo, likeService, imageStorage, redisClient)
 	threadHandler := handler.NewThreadHandler(threadService)
 
@@ -84,8 +90,7 @@ func main() {
 		go viewService.StartViewSyncWorker(context.Background())
 	}
 
-	postRepo := repository.NewPostRepository(db)
-	postService := service.NewPostService(postRepo, threadRepo, userRepo, attachmentRepo, likeService, imageStorage, redisClient)
+	postService := service.NewPostService(postRepo, threadRepo, userRepo, attachmentRepo, likeService, imageStorage, redisClient, notificationService)
 	postHandler := handler.NewPostHandler(postService)
 
 	// Start Like Worker
@@ -169,6 +174,15 @@ func main() {
 		}
 
 		api.POST("/upload", attachmentHandler.UploadAttachment)
+
+		notifications := api.Group("/notifications")
+		{
+			notifications.GET("", notificationHandler.GetNotifications)
+			notifications.GET("/unread-count", notificationHandler.UnreadCount)
+			notifications.PUT("/:id/read", notificationHandler.MarkAsRead)
+			notifications.PUT("/read-all", notificationHandler.MarkAllAsRead)
+			notifications.GET("/ws", notificationHandler.HandleWebSocket)
+		}
 	}
 
 	// Start Orphan Cleanup Job (Background)
@@ -207,7 +221,9 @@ func migrate(db *gorm.DB) error {
 		&model.Post{},
 		&model.Attachment{},
 		&model.ThreadLike{},
+		&model.ThreadLike{},
 		&model.PostLike{},
+		&model.Notification{},
 	)
 }
 

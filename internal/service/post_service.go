@@ -29,9 +29,10 @@ type postService struct {
 	likeService    LikeService
 	fileStorage    storage.ImageStorage
 	redisClient    *redis.Client
+	notificationService NotificationService
 }
 
-func NewPostService(postRepo repository.PostRepository, threadRepo repository.ThreadRepository, userRepo repository.UserRepository, attachmentRepo repository.AttachmentRepository, likeService LikeService, fileStorage storage.ImageStorage, redisClient *redis.Client) PostService {
+func NewPostService(postRepo repository.PostRepository, threadRepo repository.ThreadRepository, userRepo repository.UserRepository, attachmentRepo repository.AttachmentRepository, likeService LikeService, fileStorage storage.ImageStorage, redisClient *redis.Client, notificationService NotificationService) PostService {
 	return &postService{
 		postRepo:       postRepo,
 		threadRepo:     threadRepo,
@@ -40,6 +41,7 @@ func NewPostService(postRepo repository.PostRepository, threadRepo repository.Th
 		likeService:    likeService,
 		fileStorage:    fileStorage,
 		redisClient:    redisClient,
+		notificationService: notificationService,
 	}
 }
 
@@ -137,6 +139,44 @@ func (s *postService) CreatePost(ctx context.Context, userID uuid.UUID, req dto.
 
 	// Everything succeeded, don't roll back the rate limits.
 	creationFailed = false
+
+	go func() {
+		// Avoid notifying the user themselves
+		var targetUserID uuid.UUID
+		var notifType string
+		var message string
+
+		if parentID != nil {
+			// Reply to a post
+			// Re-fetch parent to safely check UserID
+			p, err := s.postRepo.FindByID(context.Background(), *parentID)
+			if err == nil && p.UserID != userID {
+				targetUserID = p.UserID
+				notifType = "reply_post"
+				message = fmt.Sprintf("Someone replied to your post in '%s'", thread.Title)
+			}
+		} else {
+			// Reply to thread
+			if thread.UserID != userID {
+				targetUserID = thread.UserID
+				notifType = "reply_thread"
+				message = fmt.Sprintf("Someone commented on your thread '%s'", thread.Title)
+			}
+		}
+
+		if targetUserID != uuid.Nil {
+			notification := &model.Notification{
+				UserID:     targetUserID,
+				ActorID:    userID,
+				EntityID:   post.ID, // The new reply
+				EntitySlug: thread.Slug,
+				EntityType: "post",
+				Type:       notifType,
+				Message:    message,
+			}
+			_ = s.notificationService.CreateNotification(context.Background(), notification)
+		}
+	}()
 
 	return s.mapToResponse(post), nil
 }
