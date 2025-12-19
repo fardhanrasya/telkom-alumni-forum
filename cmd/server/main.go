@@ -149,6 +149,7 @@ func main() {
 		api.POST("/threads", threadHandler.CreateThread)
 		api.GET("/threads", threadHandler.GetAllThreads)
 		api.GET("/threads/me", threadHandler.GetMyThreads)
+		api.GET("/threads/user/:username", threadHandler.GetThreadsByUsername)
 		api.GET("/threads/slug/:slug", threadHandler.GetThreadBySlug)
 		api.PUT("/threads/:thread_id", threadHandler.UpdateThread)
 		api.DELETE("/threads/:thread_id", threadHandler.DeleteThread)
@@ -168,7 +169,7 @@ func main() {
 
 		profile := api.Group("/profile")
 		{
-			api.GET("/:username", profileHandler.GetProfileByUsername)
+			profile.GET("/:username", profileHandler.GetProfileByUsername)
 			profile.GET("/me", profileHandler.GetCurrentProfile)
 			profile.PUT("", profileHandler.UpdateProfile)
 		}

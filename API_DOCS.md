@@ -347,7 +347,62 @@ Authorization: Bearer <user_token>
 }
 ```
 
-### 9.2 ✅ PUT /api/threads/:id (Authenticated User)
+### 9.2 ✅ GET /api/threads/user/:username (Authenticated User)
+
+Mendapatkan daftar thread yang dibuat oleh user tertentu berdasarkan username, dengan pagination.
+
+**Headers:**
+
+```
+Authorization: Bearer <user_token>
+```
+
+**URL Parameter:**
+
+- `username`: String username dari user.
+
+**Query Parameter:**
+
+- `page` (optional): int, default 1.
+- `limit` (optional): int, default 10.
+
+**Response (200):**
+
+```json
+{
+  "data": [
+    {
+      "id": "uuid...",
+      "category_name": "Teknologi",
+      "title": "User's Thread",
+      "slug": "users-thread",
+      "content": "Isi content...",
+      "audience": "semua",
+      "views": 50,
+      "author": "username",
+      "attachments": [],
+      "likes_count": 5,
+      "created_at": "2024-01-01 10:00:00"
+    }
+  ],
+  "meta": {
+    "current_page": 1,
+    "total_pages": 1,
+    "total_items": 1,
+    "limit": 10
+  }
+}
+```
+
+**Response (404):**
+
+```json
+{
+  "error": "user not found"
+}
+```
+
+### 9.3 ✅ PUT /api/threads/:id (Authenticated User)
 
 Mengupdate thread (judul, konten, kategori, audience, dan attachment).
 

@@ -218,3 +218,43 @@ func (h *ThreadHandler) GetThreadBySlug(c *gin.Context) {
 
 	c.JSON(http.StatusOK, thread)
 }
+
+func (h *ThreadHandler) GetThreadsByUsername(c *gin.Context) {
+	username := c.Param("username")
+	var filter dto.ThreadFilter
+	if err := c.ShouldBindQuery(&filter); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	if filter.Page == 0 {
+		filter.Page = 1
+	}
+	if filter.Limit == 0 {
+		filter.Limit = 10
+	}
+
+	userIDStr, exists := c.Get("user_id")
+	if !exists {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})
+		return
+	}
+
+	userID, err := uuid.Parse(userIDStr.(string))
+	if err != nil {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "invalid user id"})
+		return
+	}
+
+	threads, err := h.service.GetThreadsByUsername(c.Request.Context(), userID, username, filter.Page, filter.Limit)
+	if err != nil {
+		if err.Error() == "user not found" {
+			c.JSON(http.StatusNotFound, gin.H{"error": "user not found"})
+			return
+		}
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, threads)
+}
