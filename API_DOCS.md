@@ -300,9 +300,53 @@ Content-Type: application/json
 
 Mendapatkan daftar thread dengan filtering dan pagination.
 
-### 9. ✅ GET /api/threads (Authenticated User)
+**Headers:**
 
-Mendapatkan daftar thread dengan filtering dan pagination.
+```
+Authorization: Bearer <user_token>
+```
+
+**Query Parameter:**
+
+- `category_id` (optional): UUID string. Filter by category.
+- `search` (optional): string. Search title/content.
+- `audience` (optional): string (`semua`, `guru`, `siswa`).
+    **Catatan**:
+    - **Siswa** hanya akan melihat thread dengan audience `siswa` atau `semua`. Filter `guru` akan diabaikan.
+    - **Guru** hanya akan melihat thread dengan audience `guru` atau `semua`. Filter `siswa` akan diabaikan.
+- `sort_by` (optional): `popular` (by views) or default (newest).
+- `page` (optional): int, default 1.
+- `limit` (optional): int, default 10.
+
+**Response (200):**
+
+```json
+{
+  "data": [
+    {
+      "id": "uuid...",
+      "category_name": "Teknologi",
+      "title": "Tutorial Golang",
+      "slug": "tutorial-golang",
+      "content": "Isi content...",
+      "audience": "semua",
+      "views": 100,
+      "author": {
+        "username": "johndoe",
+        "avatar_url": "https://..."
+      },
+      "attachments": [],
+      "created_at": "2024-01-01 10:00:00"
+    }
+  ],
+  "meta": {
+    "current_page": 1,
+    "total_pages": 5,
+    "total_items": 50,
+    "limit": 10
+  }
+}
+```
 
 ### 9.1 ✅ GET /api/threads/me (Authenticated User)
 
@@ -332,7 +376,10 @@ Authorization: Bearer <user_token>
       "content": "Isi content...",
       "audience": "semua",
       "views": 50,
-      "author": "me",
+      "author": {
+        "username": "me",
+        "avatar_url": "https://..."
+      },
       "attachments": [],
       "likes_count": 5,
       "created_at": "2024-01-01 10:00:00"
@@ -379,7 +426,10 @@ Authorization: Bearer <user_token>
       "content": "Isi content...",
       "audience": "semua",
       "views": 50,
-      "author": "username",
+      "author": {
+        "username": "username",
+        "avatar_url": "https://..."
+      },
       "attachments": [],
       "likes_count": 5,
       "created_at": "2024-01-01 10:00:00"
@@ -431,49 +481,7 @@ Content-Type: application/json
 
 **Response (403):** "unauthorized: you can only update your own thread"
 
-**Headers:**
 
-```
-Authorization: Bearer <user_token>
-```
-
-**Query Parameter:**
-
-- `category_id` (optional): UUID string. Filter by category.
-- `search` (optional): string. Search title/content.
-- `audience` (optional): string (`semua`, `guru`, `siswa`).
-    **Catatan**:
-    - **Siswa** hanya akan melihat thread dengan audience `siswa` atau `semua`. Filter `guru` akan diabaikan.
-    - **Guru** hanya akan melihat thread dengan audience `guru` atau `semua`. Filter `siswa` akan diabaikan.
-- `sort_by` (optional): `popular` (by views) or default (newest).
-- `page` (optional): int, default 1.
-- `limit` (optional): int, default 10.
-
-**Response (200):**:
-
-```json
-{
-  "data": [
-    {
-      "id": "uuid...",
-      "category_name": "Teknologi",
-      "title": "Tutorial Golang",
-      "slug": "tutorial-golang",
-      "content": "Isi content...",
-      "audience": "semua",
-      "views": 100,
-      "author": "johndoe",
-      "attachments": [],
-      "created_at": "2024-01-01 10:00:00"
-    }
-  ],
-  "meta": {
-    "current_page": 1,
-    "total_pages": 5,
-    "total_items": 50,
-    "limit": 10
-  }
-}
 ```
 
 ### 10. ✅ GET /api/profile/:username (Authenticated User)
@@ -740,7 +748,10 @@ Content-Type: application/json
   "thread_id": "uuid...",
   "parent_id": "uuid... or null",
   "content": "This is a reply",
-  "author": "username",
+  "author": {
+    "username": "username",
+    "avatar_url": "https://..."
+  },
   "attachments": [],
   "created_at": "..."
 }
@@ -771,7 +782,10 @@ Authorization: Bearer <user_token>
       "thread_id": "uuid-v7-string",
       "parent_id": null,
       "content": "Ini adalah komentar utama.",
-      "author": "user1",
+      "author": {
+        "username": "user1",
+        "avatar_url": "https://..."
+      },
       "attachments": [],
       "likes_count": 2,
       "replies": [
@@ -780,7 +794,10 @@ Authorization: Bearer <user_token>
              "thread_id": "uuid-v7-string",
              "parent_id": "uuid-v4-string",
              "content": "Ini adalah balasan.",
-             "author": "user2",
+             "author": {
+               "username": "user2",
+               "avatar_url": "https://..."
+             },
              "replies": [],
              "created_at": "..."
           }
