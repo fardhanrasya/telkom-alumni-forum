@@ -19,7 +19,7 @@ type PostResponse struct {
 	ThreadID    uuid.UUID            `json:"thread_id"`
 	ParentID    *uuid.UUID           `json:"parent_id,omitempty"`
 	Content     string               `json:"content"`
-	Author      string               `json:"author"`
+	Author      AuthorResponse       `json:"author"`
 	Attachments []AttachmentResponse `json:"attachments,omitempty"`
 	LikesCount  int64                `json:"likes_count"`
 	Replies     []*PostResponse     `json:"replies,omitempty"`

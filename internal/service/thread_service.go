@@ -247,9 +247,12 @@ func (s *threadService) GetAllThreads(ctx context.Context, userID uuid.UUID, fil
 			})
 		}
 
-		authorName := "Unknown"
+		authorResponse := dto.AuthorResponse{
+			Username: "Unknown",
+		}
 		if thread.User.Username != "" {
-			authorName = thread.User.Username
+			authorResponse.Username = thread.User.Username
+			authorResponse.AvatarURL = thread.User.AvatarURL
 		}
 
 		likesCount, _ := s.likeService.GetThreadLikes(ctx, thread.ID)
@@ -262,7 +265,7 @@ func (s *threadService) GetAllThreads(ctx context.Context, userID uuid.UUID, fil
 			Content:      thread.Content,
 			Audience:     thread.Audience,
 			Views:        thread.Views,
-			Author:       authorName,
+			Author:       authorResponse,
 			Attachments:  attachments,
 			LikesCount:   likesCount,
 			CreatedAt:    thread.CreatedAt.Format("2006-01-02 15:04:05"),
@@ -314,9 +317,12 @@ func (s *threadService) GetMyThreads(ctx context.Context, userID uuid.UUID, page
 			})
 		}
 
-		authorName := "Unknown"
+		authorResponse := dto.AuthorResponse{
+			Username: "Unknown",
+		}
 		if thread.User.Username != "" {
-			authorName = thread.User.Username
+			authorResponse.Username = thread.User.Username
+			authorResponse.AvatarURL = thread.User.AvatarURL
 		}
 
 		likesCount, _ := s.likeService.GetThreadLikes(ctx, thread.ID)
@@ -329,7 +335,7 @@ func (s *threadService) GetMyThreads(ctx context.Context, userID uuid.UUID, page
 			Content:      thread.Content,
 			Audience:     thread.Audience,
 			Views:        thread.Views,
-			Author:       authorName,
+			Author:       authorResponse,
 			Attachments:  attachments,
 			LikesCount:   likesCount,
 			CreatedAt:    thread.CreatedAt.Format("2006-01-02 15:04:05"),
@@ -403,9 +409,12 @@ func (s *threadService) GetThreadsByUsername(ctx context.Context, currentUserID 
 			})
 		}
 
-		authorName := "Unknown"
+		authorResponse := dto.AuthorResponse{
+			Username: "Unknown",
+		}
 		if thread.User.Username != "" {
-			authorName = thread.User.Username
+			authorResponse.Username = thread.User.Username
+			authorResponse.AvatarURL = thread.User.AvatarURL
 		}
 
 		likesCount, _ := s.likeService.GetThreadLikes(ctx, thread.ID)
@@ -418,7 +427,7 @@ func (s *threadService) GetThreadsByUsername(ctx context.Context, currentUserID 
 			Content:      thread.Content,
 			Audience:     thread.Audience,
 			Views:        thread.Views,
-			Author:       authorName,
+			Author:       authorResponse,
 			Attachments:  attachments,
 			LikesCount:   likesCount,
 			CreatedAt:    thread.CreatedAt.Format("2006-01-02 15:04:05"),
@@ -457,9 +466,12 @@ func (s *threadService) GetThreadBySlug(ctx context.Context, slug string) (*dto.
 		})
 	}
 
-	authorName := "Unknown"
+	authorResponse := dto.AuthorResponse{
+		Username: "Unknown",
+	}
 	if thread.User.Username != "" {
-		authorName = thread.User.Username
+		authorResponse.Username = thread.User.Username
+		authorResponse.AvatarURL = thread.User.AvatarURL
 	}
 
 	likesCount, _ := s.likeService.GetThreadLikes(ctx, thread.ID)
@@ -472,7 +484,7 @@ func (s *threadService) GetThreadBySlug(ctx context.Context, slug string) (*dto.
 		Content:      thread.Content,
 		Audience:     thread.Audience,
 		Views:        thread.Views,
-		Author:       authorName,
+		Author:       authorResponse,
 		Attachments:  attachments,
 		LikesCount:   likesCount,
 		CreatedAt:    thread.CreatedAt.Format("2006-01-02 15:04:05"),

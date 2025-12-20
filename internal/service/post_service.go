@@ -388,9 +388,12 @@ func (s *postService) mapToResponse(post *model.Post) *dto.PostResponse {
 		})
 	}
 
-	authorName := "Unknown"
+	authorResponse := dto.AuthorResponse{
+		Username: "Unknown",
+	}
 	if post.User.Username != "" {
-		authorName = post.User.Username
+		authorResponse.Username = post.User.Username
+		authorResponse.AvatarURL = post.User.AvatarURL
 	}
 
 	likesCount, _ := s.likeService.GetPostLikes(context.Background(), post.ID)
@@ -400,7 +403,7 @@ func (s *postService) mapToResponse(post *model.Post) *dto.PostResponse {
 		ThreadID:    post.ThreadID,
 		ParentID:    post.ParentID,
 		Content:     post.Content,
-		Author:      authorName,
+		Author:      authorResponse,
 		Attachments: attachments,
 		LikesCount:  likesCount,
 		CreatedAt:   post.CreatedAt.Format("2006-01-02 15:04:05"),
