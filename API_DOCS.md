@@ -670,7 +670,8 @@ Login untuk semua user (tidak ada perubahan).
   "expires_in": 1234567890,
   "user": {...},
   "role": {...},
-  "profile": {...}
+  "profile": {...},
+  "search_token": "eyJhbGc... (Token untuk Meilisearch)"
 }
 ```
 

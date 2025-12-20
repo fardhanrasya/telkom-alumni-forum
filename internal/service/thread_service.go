@@ -34,9 +34,10 @@ type threadService struct {
 	fileStorage    storage.ImageStorage
 	redisClient    *redis.Client
 	viewService    ViewService
+	meili          MeiliSearchService
 }
 
-func NewThreadService(threadRepo repository.ThreadRepository, categoryRepo repository.CategoryRepository, userRepo repository.UserRepository, attachmentRepo repository.AttachmentRepository, likeService LikeService, fileStorage storage.ImageStorage, redisClient *redis.Client) ThreadService {
+func NewThreadService(threadRepo repository.ThreadRepository, categoryRepo repository.CategoryRepository, userRepo repository.UserRepository, attachmentRepo repository.AttachmentRepository, likeService LikeService, fileStorage storage.ImageStorage, redisClient *redis.Client, meili MeiliSearchService) ThreadService {
 	viewService := NewViewService(redisClient, threadRepo)
 
 	return &threadService{
@@ -48,6 +49,7 @@ func NewThreadService(threadRepo repository.ThreadRepository, categoryRepo repos
 		fileStorage:    fileStorage,
 		redisClient:    redisClient,
 		viewService:    viewService,
+		meili:          meili,
 	}
 }
 
@@ -149,6 +151,17 @@ func (s *threadService) CreateThread(ctx context.Context, userID uuid.UUID, req 
 
 	// Everything succeeded, don't roll back the rate limits.
 	creationFailed = false
+
+	// Index to Meilisearch
+	thread.User = *user
+	thread.Category = *category
+	if s.meili != nil {
+		if err := s.meili.IndexThread(thread); err != nil {
+			// Log error but don't fail the request?
+			// Or fail? Best to log.
+			fmt.Printf("Failed to index thread: %v\n", err)
+		}
+	}
 
 	return nil
 }
@@ -503,7 +516,15 @@ func (s *threadService) DeleteThread(ctx context.Context, userID uuid.UUID, thre
 	}
 
 	// 5. Delete Thread
-	return s.threadRepo.Delete(ctx, threadID)
+	if err := s.threadRepo.Delete(ctx, threadID); err != nil {
+		return err
+	}
+
+	if s.meili != nil {
+		_ = s.meili.DeleteThread(threadID.String())
+	}
+	
+	return nil
 }
 
 func (s *threadService) UpdateThread(ctx context.Context, userID uuid.UUID, threadID uuid.UUID, req dto.UpdateThreadRequest) error {
@@ -570,5 +591,17 @@ func (s *threadService) UpdateThread(ctx context.Context, userID uuid.UUID, thre
 		}
 	}
 
-	return s.threadRepo.Update(ctx, thread)
+	if err := s.threadRepo.Update(ctx, thread); err != nil {
+		return err
+	}
+
+	if s.meili != nil {
+		// Reload thread to get fresh associations for indexing
+		reloadedThread, err := s.threadRepo.FindByID(ctx, threadID)
+		if err == nil {
+			_ = s.meili.IndexThread(reloadedThread)
+		}
+	}
+
+	return nil
 }

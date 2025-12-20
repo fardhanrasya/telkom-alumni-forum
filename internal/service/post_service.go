@@ -30,9 +30,10 @@ type postService struct {
 	fileStorage    storage.ImageStorage
 	redisClient    *redis.Client
 	notificationService NotificationService
+	meili          MeiliSearchService
 }
 
-func NewPostService(postRepo repository.PostRepository, threadRepo repository.ThreadRepository, userRepo repository.UserRepository, attachmentRepo repository.AttachmentRepository, likeService LikeService, fileStorage storage.ImageStorage, redisClient *redis.Client, notificationService NotificationService) PostService {
+func NewPostService(postRepo repository.PostRepository, threadRepo repository.ThreadRepository, userRepo repository.UserRepository, attachmentRepo repository.AttachmentRepository, likeService LikeService, fileStorage storage.ImageStorage, redisClient *redis.Client, notificationService NotificationService, meili MeiliSearchService) PostService {
 	return &postService{
 		postRepo:       postRepo,
 		threadRepo:     threadRepo,
@@ -42,6 +43,7 @@ func NewPostService(postRepo repository.PostRepository, threadRepo repository.Th
 		fileStorage:    fileStorage,
 		redisClient:    redisClient,
 		notificationService: notificationService,
+		meili:          meili,
 	}
 }
 
@@ -178,6 +180,22 @@ func (s *postService) CreatePost(ctx context.Context, userID uuid.UUID, req dto.
 		}
 	}()
 
+	// Index to Meilisearch
+	post.Thread = *thread
+	// Ensure User is populated if not already
+	if post.User.Username == "" {
+		u, _ := s.userRepo.FindByID(ctx, userID.String())
+		if u != nil {
+			post.User = *u
+		}
+	}
+	
+	if s.meili != nil {
+		if err := s.meili.IndexPost(post); err != nil {
+			fmt.Printf("Failed to index post: %v\n", err)
+		}
+	}
+
 	return s.mapToResponse(post), nil
 }
 
@@ -309,6 +327,18 @@ func (s *postService) UpdatePost(ctx context.Context, userID uuid.UUID, postID u
 		post = updatedPost
 	}
 
+	// Index to Meilisearch
+	if s.meili != nil {
+		// Ensure Thread is loaded for IndexPost (Audience check)
+		if post.Thread.ID == uuid.Nil {
+			t, err := s.threadRepo.FindByID(ctx, post.ThreadID)
+			if err == nil {
+				post.Thread = *t
+			}
+		}
+		_ = s.meili.IndexPost(post)
+	}
+
 	return s.mapToResponse(post), nil
 }
 
@@ -337,7 +367,15 @@ func (s *postService) DeletePost(ctx context.Context, userID uuid.UUID, postID u
 	// Scheme: parent_id UUID REFERENCES posts(id) ON DELETE CASCADE
 	// Yes, deletions cascade.
 
-	return s.postRepo.Delete(ctx, postID)
+	if err := s.postRepo.Delete(ctx, postID); err != nil {
+		return err
+	}
+
+	if s.meili != nil {
+		_ = s.meili.DeletePost(postID.String())
+	}
+	
+	return nil
 }
 
 func (s *postService) mapToResponse(post *model.Post) *dto.PostResponse {

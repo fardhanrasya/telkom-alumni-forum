@@ -24,4 +24,5 @@ type AuthResponse struct {
 	User        *model.User    `json:"user"`
 	Role        *model.Role    `json:"role"`
 	Profile     *model.Profile `json:"profile"`
+	SearchToken string         `json:"search_token,omitempty"`
 }

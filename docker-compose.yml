@@ -17,6 +17,7 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
+    restart: unless-stopped
     networks:
       - telkom-forum-network
 
@@ -27,13 +28,33 @@ services:
       - "${REDIS_PORT:-6379}:6379"
     volumes:
       - redis_data:/data
-    networks:
-      - telkom-forum-network
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       interval: 10s
       timeout: 5s
       retries: 5
+    restart: unless-stopped
+    networks:
+      - telkom-forum-network
+
+  meilisearch:
+    image: getmeili/meilisearch:v1.10
+    container_name: meilisearch_forum
+    ports:
+      - "7700:7700"
+    environment:
+      - MEILI_MASTER_KEY=${MEILI_MASTER_KEY}
+      - MEILI_ENV=${MEILI_ENV}
+    volumes:
+      - meilisearch_data:/meili_data
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:7700/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+    networks:
+      - telkom-forum-network
 
   nginx:
     image: nginx:alpine
@@ -47,6 +68,7 @@ services:
       - /var/www/certbot:/var/www/certbot:ro
     depends_on:
       - app
+    restart: unless-stopped
     networks:
       - telkom-forum-network
 
@@ -77,6 +99,9 @@ services:
       CLOUDINARY_CLOUD_NAME: ${CLOUDINARY_CLOUD_NAME:-}
       CLOUDINARY_API_KEY: ${CLOUDINARY_API_KEY:-}
       CLOUDINARY_API_SECRET: ${CLOUDINARY_API_SECRET:-}
+      # Meilisearch configuration
+      MEILISEARCH_HOST: meilisearch
+      MEILI_MASTER_KEY: ${MEILI_MASTER_KEY}
       # Redis configuration
       REDIS_HOST: redis
       REDIS_PORT: 6379
@@ -84,6 +109,8 @@ services:
       postgres:
         condition: service_healthy
       redis:
+        condition: service_healthy
+      meilisearch:
         condition: service_healthy
     networks:
       - telkom-forum-network
@@ -93,6 +120,8 @@ volumes:
   postgres_data:
     driver: local
   redis_data:
+    driver: local
+  meilisearch_data:
     driver: local
 
 networks:

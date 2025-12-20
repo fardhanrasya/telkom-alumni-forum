@@ -17,6 +17,7 @@ import (
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
 	"github.com/joho/godotenv"
+	"github.com/meilisearch/meilisearch-go"
 	"golang.org/x/crypto/bcrypt"
 	"gorm.io/gorm"
 )
@@ -54,7 +55,22 @@ func main() {
 		log.Fatalf("failed to initialize cloudinary storage: %v", err)
 	}
 
-	authService := service.NewAuthService(userRepo, imageStorage)
+	// Initialize Meilisearch
+	meiliHost := os.Getenv("MEILISEARCH_HOST")
+	if meiliHost == "" {
+		meiliHost = "http://localhost:7700"
+	}
+	// Basic check to ensure protocol presence if needed, but assuming env is correct or handled
+	if !strings.HasPrefix(meiliHost, "http") {
+		// If provided as "meilisearch", likely from docker, assuming port 7700
+		meiliHost = "http://" + meiliHost + ":7700"
+	}
+
+	meiliClient := meilisearch.New(meiliHost, meilisearch.WithAPIKey(os.Getenv("MEILI_MASTER_KEY")))
+
+	meiliService := service.NewMeiliSearchService(meiliClient)
+
+	authService := service.NewAuthService(userRepo, imageStorage, meiliService)
 	authHandler := handler.NewAuthHandler(authService)
 
 	adminService := service.NewAdminService(userRepo, imageStorage)
@@ -82,7 +98,7 @@ func main() {
 	likeService := service.NewLikeService(redisClient, likeRepo, threadRepo, postRepo, notificationService)
 	likeHandler := handler.NewLikeHandler(likeService)
 
-	threadService := service.NewThreadService(threadRepo, categoryRepo, userRepo, attachmentRepo, likeService, imageStorage, redisClient)
+	threadService := service.NewThreadService(threadRepo, categoryRepo, userRepo, attachmentRepo, likeService, imageStorage, redisClient, meiliService)
 	threadHandler := handler.NewThreadHandler(threadService)
 
 	viewService := service.NewViewService(redisClient, threadRepo)
@@ -90,7 +106,7 @@ func main() {
 		go viewService.StartViewSyncWorker(context.Background())
 	}
 
-	postService := service.NewPostService(postRepo, threadRepo, userRepo, attachmentRepo, likeService, imageStorage, redisClient, notificationService)
+	postService := service.NewPostService(postRepo, threadRepo, userRepo, attachmentRepo, likeService, imageStorage, redisClient, notificationService, meiliService)
 	postHandler := handler.NewPostHandler(postService)
 
 	// Start Like Worker

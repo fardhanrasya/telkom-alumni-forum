@@ -3,6 +3,7 @@ package service
 import (
 	"context"
 	"errors"
+	"log"
 	"os"
 	"strconv"
 	"strings"
@@ -27,9 +28,10 @@ type authService struct {
 	secret       string
 	tokenTTL     time.Duration
 	defaultRole  string
+	meili        MeiliSearchService
 }
 
-func NewAuthService(repo repository.UserRepository, imageStorage storage.ImageStorage) AuthService {
+func NewAuthService(repo repository.UserRepository, imageStorage storage.ImageStorage, meili MeiliSearchService) AuthService {
 	secret := os.Getenv("JWT_SECRET")
 	if secret == "" {
 		secret = "change-me"
@@ -53,6 +55,7 @@ func NewAuthService(repo repository.UserRepository, imageStorage storage.ImageSt
 		secret:       secret,
 		tokenTTL:     ttl,
 		defaultRole:  defaultRole,
+		meili:        meili,
 	}
 }
 
@@ -78,6 +81,21 @@ func (s *authService) buildAuthResponse(user *model.User) (*dto.AuthResponse, er
 		return nil, err
 	}
 
+	var searchToken string
+	if s.meili != nil {
+		roleName := "siswa" // Default fallback
+		if user.RoleID != nil {
+			roleName = user.Role.Name
+		}
+		st, err := s.meili.GenerateSearchToken(roleName)
+		if err != nil {
+			log.Printf("Failed to generate search token for user %s (role %s): %v", user.Username, roleName, err)
+			searchToken = ""
+		} else {
+			searchToken = st
+		}
+	}
+
 	user.PasswordHash = ""
 
 	return &dto.AuthResponse{
@@ -87,6 +105,7 @@ func (s *authService) buildAuthResponse(user *model.User) (*dto.AuthResponse, er
 		User:        user,
 		Role:        &user.Role,
 		Profile:     user.Profile,
+		SearchToken: searchToken,
 	}, nil
 }
 
