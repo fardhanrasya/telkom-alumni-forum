@@ -16,7 +16,8 @@ func (r *threadRepository) GetTrending(ctx context.Context, limit int) ([]*model
 		WHERE created_at >= NOW() - INTERVAL '7 days'
 		ORDER BY (
 			(COALESCE(views, 0) + 
-			((SELECT COUNT(*) FROM thread_likes WHERE thread_likes.thread_id = threads.id) * 10))
+			((SELECT COUNT(*) FROM thread_likes WHERE thread_likes.thread_id = threads.id) * 5) + 
+			(COALESCE(replies_count, 0) * 30))
 			/ 
 			POWER((EXTRACT(EPOCH FROM (NOW() - created_at))/3600) + 2, 1.8)
 		) DESC

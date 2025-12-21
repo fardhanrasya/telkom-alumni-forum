@@ -26,7 +26,17 @@ func NewPostRepository(db *gorm.DB) PostRepository {
 }
 
 func (r *postRepository) Create(ctx context.Context, post *model.Post) error {
-	return r.db.WithContext(ctx).Create(post).Error
+	return r.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		if err := tx.Create(post).Error; err != nil {
+			return err
+		}
+		// Increment thread replies_count
+		if err := tx.Model(&model.Thread{}).Where("id = ?", post.ThreadID).
+			UpdateColumn("replies_count", gorm.Expr("replies_count + ?", 1)).Error; err != nil {
+			return err
+		}
+		return nil
+	})
 }
 
 func (r *postRepository) FindByID(ctx context.Context, id uuid.UUID) (*model.Post, error) {
@@ -83,5 +93,22 @@ func (r *postRepository) Update(ctx context.Context, post *model.Post) error {
 }
 
 func (r *postRepository) Delete(ctx context.Context, id uuid.UUID) error {
-	return r.db.WithContext(ctx).Delete(&model.Post{}, id).Error
+	return r.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		// Get post to find ThreadID
+		var post model.Post
+		if err := tx.Select("thread_id").First(&post, id).Error; err != nil {
+			return err
+		}
+
+		if err := tx.Delete(&model.Post{}, id).Error; err != nil {
+			return err
+		}
+
+		// Decrement thread replies_count
+		if err := tx.Model(&model.Thread{}).Where("id = ?", post.ThreadID).
+			UpdateColumn("replies_count", gorm.Expr("replies_count - ?", 1)).Error; err != nil {
+				return err
+		}
+		return nil
+	})
 }

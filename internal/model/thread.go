@@ -18,6 +18,7 @@ type Thread struct {
 	Content     string       `gorm:"type:text;not null" json:"content"`
 	Audience    string       `gorm:"size:50;not null" json:"audience"` // 'semua', 'guru', 'siswa'
 	Views       int          `gorm:"default:0" json:"views"`
+	RepliesCount int         `gorm:"default:0" json:"replies_count"`
 	Attachments []Attachment `gorm:"foreignKey:ThreadID" json:"attachments,omitempty"`
 	CreatedAt   time.Time    `gorm:"autoCreateTime" json:"created_at"`
 	UpdatedAt   time.Time    `gorm:"autoUpdateTime" json:"updated_at"`
