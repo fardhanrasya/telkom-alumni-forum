@@ -74,7 +74,7 @@ services:
       MEILISEARCH_HOST: meilisearch
       MEILI_MASTER_KEY: ${MEILI_MASTER_KEY}
       REDIS_HOST: redis
-      REDIS_PORT: 6379\
+      REDIS_PORT: 6379
     ports:
       - "8080:8080"
     depends_on:
