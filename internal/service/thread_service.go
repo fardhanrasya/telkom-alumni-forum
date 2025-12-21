@@ -23,6 +23,7 @@ type ThreadService interface {
 	UpdateThread(ctx context.Context, userID uuid.UUID, threadID uuid.UUID, req dto.UpdateThreadRequest) error
 	IncrementView(ctx context.Context, threadID uuid.UUID, userID uuid.UUID) error
 	GetThreadsByUsername(ctx context.Context, currentUserID uuid.UUID, username string, page, limit int) (*dto.PaginatedThreadResponse, error)
+	GetTrendingThreads(ctx context.Context, limit int) ([]dto.ThreadResponse, error)
 }
 
 type threadService struct {

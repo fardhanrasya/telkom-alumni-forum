@@ -1069,6 +1069,51 @@ Klien harus melakukan koneksi ke endpoint ini. Karena WebSocket browser API tida
 }
 ```
 
+
+### 31. ✅ GET /api/users/count
+
+Mendapatkan total jumlah user yang terdaftar di sistem.
+
+**Response (200):**
+
+```json
+{
+  "total_users": 150
+}
+```
+
+### 32. ✅ GET /api/threads/trending
+
+Mendapatkan daftar thread yang sedang trending (populer hari ini). Menggunakan algoritma *Gravity Decay* yang memperhitungkan Views, Likes, dan waktu pembuatan.
+
+**Query Parameter:**
+
+- `limit` (optional): int, jumlah thread yang ingin diambil. Default: `10`.
+
+**Response (200):**
+
+```json
+{
+  "data": [
+    {
+      "id": "uuid...",
+      "category_name": "Teknologi",
+      "title": "Tutorial Golang yang Viral",
+      "slug": "tutorial-golang-viral",
+      "content": "Isi content...",
+      "audience": "semua",
+      "views": 500,
+      "likes_count": 50,
+      "author": {
+        "username": "johndoe",
+        "avatar_url": "https://..."
+      },
+      "created_at": "2024-01-01 10:00:00"
+    }
+  ]
+}
+```
+
 ## Catatan Keamanan
 
 1. **Admin Only**: Endpoint `/api/admin/*` memerlukan token JWT dari user dengan role `admin`

@@ -114,6 +114,9 @@ func main() {
 		go likeService.StartWorker(context.Background())
 	}
 
+	statService := service.NewStatService(userRepo)
+	statHandler := handler.NewStatHandler(statService, threadService)
+
 	router := gin.Default()
 
 	allowedOrigins := os.Getenv("ALLOWED_ORIGINS")
@@ -144,8 +147,6 @@ func main() {
 
 	authMiddleware := middleware.NewAuthMiddleware(userRepo)
 
-	// Public routes (tidak perlu auth)
-
 	// Protected routes (perlu auth)
 	api.Use(authMiddleware.RequireAuth())
 	{
@@ -160,7 +161,10 @@ func main() {
 			admin.DELETE("/categories/:id", categoryHandler.DeleteCategory)
 		}
 
-		api.GET("/categories", categoryHandler.GetAllCategories) // Public or Protected? Making it protected as per grouping
+		api.GET("/users/count", statHandler.GetTotalUsers)
+		api.GET("/threads/trending", statHandler.GetTrendingThreads)
+
+		api.GET("/categories", categoryHandler.GetAllCategories)
 
 		api.POST("/threads", threadHandler.CreateThread)
 		api.GET("/threads", threadHandler.GetAllThreads)

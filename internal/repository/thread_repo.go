@@ -14,6 +14,7 @@ type ThreadRepository interface {
 	FindByID(ctx context.Context, id uuid.UUID) (*model.Thread, error)
 	FindAll(ctx context.Context, categoryID *uuid.UUID, search string, audiences []string, sortBy string, offset, limit int) ([]*model.Thread, int64, error)
 	FindByUserID(ctx context.Context, userID uuid.UUID, audiences []string, offset, limit int) ([]*model.Thread, int64, error)
+	GetTrending(ctx context.Context, limit int) ([]*model.Thread, error)
 	Update(ctx context.Context, thread *model.Thread) error
 	Delete(ctx context.Context, id uuid.UUID) error
 }

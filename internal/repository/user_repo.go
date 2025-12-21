@@ -16,6 +16,7 @@ type UserRepository interface {
 	Update(ctx context.Context, user *model.User, profile *model.Profile) error
 	FindAll(ctx context.Context) ([]*model.User, error)
 	Delete(ctx context.Context, id string) error
+	Count(ctx context.Context) (int64, error)
 }
 
 type userRepository struct {
@@ -24,6 +25,14 @@ type userRepository struct {
 
 func NewUserRepository(db *gorm.DB) UserRepository {
 	return &userRepository{db: db}
+}
+
+func (r *userRepository) Count(ctx context.Context) (int64, error) {
+	var count int64
+	if err := r.db.WithContext(ctx).Model(&model.User{}).Count(&count).Error; err != nil {
+		return 0, err
+	}
+	return count, nil
 }
 
 func (r *userRepository) Create(ctx context.Context, user *model.User, profile *model.Profile) error {
