@@ -1114,6 +1114,89 @@ Mendapatkan daftar thread yang sedang trending (populer hari ini). Menggunakan a
 }
 ```
 
+### 33. ✅ POST /api/menfess (Authenticated User)
+
+Membuat pesan menfess anonim dengan arsitektur "Blind Gatekeeper". 
+- Identitas pengirim **TIDAK DISIMPAN** dan **TIDAK DILOG**.
+- Quota: Maksimal 2 menfess per user per hari (reset jam 00:00).
+- Waktu pembuatan disimpan dengan timestamp fuzzy (dibulatkan ke 5 menit terdekat).
+- **Hanya Siswa dan Admin** yang bisa menggunakan fitur ini. Role **Guru** tidak diizinkan.
+
+**Headers:**
+
+```
+Authorization: Bearer <user_token>
+Content-Type: application/json
+```
+
+**Body (JSON):**
+
+- `content` (required): string. Isi pesan menfess.
+
+**Response (201):**
+
+```json
+{
+  "message": "menfess created successfully"
+}
+```
+
+**Response (429):** Quota habis.
+
+```json
+{
+  "error": "menfess quota exceeded (max 2 per day)"
+}
+```
+
+**Response (403):** Role Guru dilarang post.
+
+```json
+{
+  "error": "guru cannot post menfess"
+}
+```
+
+### 34. ✅ GET /api/menfess (Authenticated User)
+
+Mendapatkan daftar semua menfess secara publik (tanpa data pengirim).
+
+**Headers:**
+
+```
+Authorization: Bearer <user_token>
+```
+
+**Query Parameter:**
+
+- `page` (optional): int, default 1.
+- `limit` (optional): int, default 10.
+
+**Response (200):**
+
+```json
+{
+  "data": [
+    {
+      "id": "uuid...",
+      "content": "Ini pesan rahasia...",
+      "created_at": "2024-01-01 12:05:00"
+    }
+  ],
+  "total": 50,
+  "page": 1,
+  "limit": 10
+}
+```
+
+**Response (403):** Role Guru dilarang lihat.
+
+```json
+{
+  "error": "guru cannot view menfess"
+}
+```
+
 ## Catatan Keamanan
 
 1. **Admin Only**: Endpoint `/api/admin/*` memerlukan token JWT dari user dengan role `admin`
