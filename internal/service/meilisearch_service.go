@@ -2,8 +2,10 @@ package service
 
 import (
 	"fmt"
+	"html"
 	"log"
 	"os"
+	"strings"
 	"time"
 
 	"anoa.com/telkomalumiforum/internal/model"
@@ -157,6 +159,24 @@ type meiliCategorySubset struct {
 	Name string `json:"name"`
 }
 
+func (s *meiliSearchService) cleanContentForIndex(content string) string {
+	// 1. Replace block tags with spaces to prevent text merging
+	content = strings.ReplaceAll(content, "</p>", " ")
+	content = strings.ReplaceAll(content, "<br>", " ")
+	content = strings.ReplaceAll(content, "</div>", " ")
+
+	// 2. Sanitize
+	sanitized := s.sanitizer.Sanitize(content)
+
+	// 3. Unescape entities
+	cleanText := html.UnescapeString(sanitized)
+
+	// 4. Normalize whitespace
+	cleanText = strings.Join(strings.Fields(cleanText), " ")
+
+	return cleanText
+}
+
 func (s *meiliSearchService) IndexThread(thread *model.Thread) error {
 	allowedRoles := []string{}
 	if thread.Audience == "semua" {
@@ -168,7 +188,7 @@ func (s *meiliSearchService) IndexThread(thread *model.Thread) error {
 	doc := meiliThreadDoc{
 		ID:           thread.ID.String(),
 		Title:        thread.Title,
-		Content:      s.sanitizer.Sanitize(thread.Content),
+		Content:      s.cleanContentForIndex(thread.Content),
 		Slug:         thread.Slug,
 		Audience:     thread.Audience,
 		AllowedRoles: allowedRoles,
@@ -215,9 +235,11 @@ func (s *meiliSearchService) IndexPost(post *model.Post) error {
 		allowedRoles = append(allowedRoles, post.Thread.Audience)
 	}
 
+	log.Println("Indexing post document: ", post)
+
 	doc := meiliPostDoc{
 		ID:           post.ID.String(),
-		Content:      s.sanitizer.Sanitize(post.Content),
+		Content:      s.cleanContentForIndex(post.Content),
 		ThreadID:     post.ThreadID.String(),
 		ThreadSlug:   post.Thread.Slug,
 		ThreadTitle:  post.Thread.Title,
@@ -228,6 +250,8 @@ func (s *meiliSearchService) IndexPost(post *model.Post) error {
 			AvatarURL:  getStringOrEmpty(post.User.AvatarURL),
 		},
 	}
+
+	log.Println("Indexed post document after sanitize: ", doc)
 
 	task, err := s.client.Index("posts").AddDocuments([]meiliPostDoc{doc}, strPtr("id"))
 	if err != nil {
