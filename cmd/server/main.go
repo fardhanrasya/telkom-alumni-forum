@@ -117,7 +117,15 @@ func main() {
 	statService := service.NewStatService(userRepo)
 	statHandler := handler.NewStatHandler(statService, threadService)
 
-	router := gin.Default()
+	menfessRepo := repository.NewMenfessRepository(db)
+	menfessService := service.NewMenfessService(menfessRepo, redisClient)
+	menfessHandler := handler.NewMenfessHandler(menfessService, userRepo)
+
+	router := gin.New()
+	router.Use(gin.Recovery())
+	router.Use(gin.LoggerWithConfig(gin.LoggerConfig{
+		SkipPaths: []string{"/api/menfess"},
+	}))
 
 	allowedOrigins := os.Getenv("ALLOWED_ORIGINS")
 	var origins []string
@@ -204,6 +212,12 @@ func main() {
 			notifications.PUT("/read-all", notificationHandler.MarkAllAsRead)
 			notifications.GET("/ws", notificationHandler.HandleWebSocket)
 		}
+
+		menfess := api.Group("/menfess")
+		{
+			menfess.POST("", menfessHandler.CreateMenfess)
+			menfess.GET("", menfessHandler.GetMenfesses)
+		}
 	}
 
 	// Start Orphan Cleanup Job (Background)
@@ -245,6 +259,7 @@ func migrate(db *gorm.DB) error {
 		&model.ThreadLike{},
 		&model.PostLike{},
 		&model.Notification{},
+		&model.Menfess{},
 	)
 }
 
