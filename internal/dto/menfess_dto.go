@@ -3,7 +3,7 @@ package dto
 import "time"
 
 type CreateMenfessRequest struct {
-	Content string `json:"content" binding:"required, max=3000"`
+	Content string `json:"content" binding:"required,max=3000"`
 }
 
 type MenfessResponse struct {
