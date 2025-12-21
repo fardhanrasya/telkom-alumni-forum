@@ -5,12 +5,12 @@ import "github.com/google/uuid"
 type CreatePostRequest struct {
 	ThreadID      string `json:"thread_id"`
 	ParentID      string `json:"parent_id"` // Optional, for nested replies
-	Content       string `json:"content" binding:"required"`
+	Content       string `json:"content" binding:"required,max=5000"`
 	AttachmentIDs []uint `json:"attachment_ids"`
 }
 
 type UpdatePostRequest struct {
-	Content       string `json:"content" binding:"required"`
+	Content       string `json:"content" binding:"required,max=5000"`
 	AttachmentIDs []uint `json:"attachment_ids"`
 }
 
