@@ -8,8 +8,7 @@ services:
       POSTGRES_USER: ${DB_USER:-postgres}
       POSTGRES_PASSWORD: ${DB_PASS:-postgres}
       POSTGRES_DB: ${DB_NAME:-telkom_forum}
-    ports:
-      - "${DB_PORT:-5432}:5432"
+    command: postgres -c shared_buffers=64MB -c max_connections=50
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
@@ -24,8 +23,6 @@ services:
   redis:
     image: redis:alpine
     container_name: telkom-forum-redis
-    ports:
-      - "${REDIS_PORT:-6379}:6379"
     volumes:
       - redis_data:/data
     healthcheck:
@@ -45,6 +42,8 @@ services:
     environment:
       - MEILI_MASTER_KEY=${MEILI_MASTER_KEY}
       - MEILI_ENV=${MEILI_ENV}
+      - MEILI_HTTP_CORS_ALLOW_ORIGINS=${ALLOWED_ORIGINS}
+      - MEILI_MAX_INDEXING_MEMORY=200Mb
     volumes:
       - meilisearch_data:/meili_data
     healthcheck:
@@ -56,55 +55,28 @@ services:
     networks:
       - telkom-forum-network
 
-  nginx:
-    image: nginx:alpine
-    container_name: telkom-forum-nginx
-    ports:
-      - "80:80"
-      - "443:443"
-    volumes:
-      - ./nginx/default.conf:/etc/nginx/conf.d/default.conf
-      - /etc/letsencrypt:/etc/letsencrypt:ro
-      - /var/www/certbot:/var/www/certbot:ro
-    depends_on:
-      - app
-    restart: unless-stopped
-    networks:
-      - telkom-forum-network
-
-
-
   app:
     build:
       context: .
       dockerfile: Dockerfile
     container_name: telkom-forum-app
     environment:
-      # App Environment
-      APP_ENV: ${APP_ENV:-development} 
-      # Database configuration
+      APP_ENV: ${APP_ENV:-production}
       DB_HOST: postgres
       DB_USER: ${DB_USER:-postgres}
       DB_PASS: ${DB_PASS:-postgres}
       DB_NAME: ${DB_NAME:-telkom_forum}
       DB_PORT: 5432
-      # JWT Configuration
       JWT_SECRET: ${JWT_SECRET}
-      # Application port
-      PORT: ${PORT:-8080}
-      # CORS Configuration
+      PORT: 8080
       ALLOWED_ORIGINS: ${ALLOWED_ORIGINS:-http://localhost:3000}
-      # Cloudinary configuration (optional - set these in .env file)
       CLOUDINARY_URL: ${CLOUDINARY_URL:-}
-      CLOUDINARY_CLOUD_NAME: ${CLOUDINARY_CLOUD_NAME:-}
-      CLOUDINARY_API_KEY: ${CLOUDINARY_API_KEY:-}
-      CLOUDINARY_API_SECRET: ${CLOUDINARY_API_SECRET:-}
-      # Meilisearch configuration
       MEILISEARCH_HOST: meilisearch
       MEILI_MASTER_KEY: ${MEILI_MASTER_KEY}
-      # Redis configuration
       REDIS_HOST: redis
-      REDIS_PORT: 6379
+      REDIS_PORT: 6379\
+    ports:
+      - "8080:8080"
     depends_on:
       postgres:
         condition: service_healthy
