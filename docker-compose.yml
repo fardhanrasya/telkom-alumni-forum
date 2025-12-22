@@ -75,6 +75,7 @@ services:
       MEILI_MASTER_KEY: ${MEILI_MASTER_KEY}
       REDIS_HOST: redis
       REDIS_PORT: 6379
+      GEMINI_API_KEY: ${GEMINI_API_KEY}
     ports:
       - "8080:8080"
     depends_on:
