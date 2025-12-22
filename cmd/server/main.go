@@ -7,6 +7,7 @@ import (
 	"strings"
 	"time"
 
+	"anoa.com/telkomalumiforum/internal/agent"
 	"anoa.com/telkomalumiforum/internal/handler"
 	"anoa.com/telkomalumiforum/internal/middleware"
 	"anoa.com/telkomalumiforum/internal/model"
@@ -46,6 +47,9 @@ func main() {
 	if appEnv == "development" {
 		if err := seedAdminUser(db); err != nil {
 			log.Fatalf("failed to seed admin user: %v", err)
+		}
+		if err := seedBotUser(db); err != nil {
+			log.Fatalf("failed to seed bot user: %v", err)
 		}
 	}
 
@@ -120,6 +124,12 @@ func main() {
 	menfessRepo := repository.NewMenfessRepository(db)
 	menfessService := service.NewMenfessService(menfessRepo, redisClient)
 	menfessHandler := handler.NewMenfessHandler(menfessService, userRepo)
+
+	// Start AI Agent
+	if redisClient != nil {
+		aiAgent := agent.NewAgent(threadService, userRepo, categoryRepo, redisClient)
+		aiAgent.Start()
+	}
 
 	router := gin.New()
 	router.Use(gin.Recovery())
@@ -337,6 +347,55 @@ func seedAdminUser(db *gorm.DB) error {
 	log.Println("   Email: admin@telkom.com")
 	log.Println("   Password: admin123")
 
+	return nil
+}
+
+func seedBotUser(db *gorm.DB) error {
+	var siswaRole model.Role
+	if err := db.Where("name = ?", "siswa").First(&siswaRole).Error; err != nil {
+		return err
+	}
+
+	var count int64
+	if err := db.Model(&model.User{}).
+		Where("username = ?", "Mading_Bot").
+		Count(&count).Error; err != nil {
+		return err
+	}
+
+	if count > 0 {
+		return nil
+	}
+
+	password := "bot12345" // Random password, not intended for login
+	hashedPasswordBytes, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
+	if err != nil {
+		return err
+	}
+
+	botUser := model.User{
+		Username:     "Mading_Bot",
+		Email:        "bot@telkom.com",
+		PasswordHash: string(hashedPasswordBytes),
+		RoleID:       &siswaRole.ID,
+		AvatarURL:    stringPtr("https://ui-avatars.com/api/?name=Mading+Bot&background=random"),
+	}
+
+	if err := db.Create(&botUser).Error; err != nil {
+		return err
+	}
+
+	botProfile := model.Profile{
+		UserID:   botUser.ID,
+		FullName: "Mading Bot",
+		Bio:      stringPtr("🤖 Bot Mading Sekolah - Memberikan informasi terkini seputar teknologi dan berita sekolah."),
+	}
+
+	if err := db.Create(&botProfile).Error; err != nil {
+		return err
+	}
+
+	log.Println("✅ Bot user seeded successfully")
 	return nil
 }
 

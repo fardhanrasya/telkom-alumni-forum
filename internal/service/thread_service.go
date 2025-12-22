@@ -3,6 +3,7 @@ package service
 import (
 	"context"
 	"fmt"
+	"regexp"
 	"strings"
 	"time"
 
@@ -122,7 +123,16 @@ func (s *threadService) CreateThread(ctx context.Context, userID uuid.UUID, req 
 		return fmt.Errorf("invalid category id")
 	}
 
-	slug := strings.ReplaceAll(strings.ToLower(req.Title), " ", "-")
+	// Sanitize slug
+	slug := strings.ToLower(req.Title)
+	// Remove invalid chars
+	reg, _ := regexp.Compile("[^a-z0-9 ]+")
+	slug = reg.ReplaceAllString(slug, "")
+	// Replace spaces with hyphens
+	slug = strings.ReplaceAll(slug, " ", "-")
+	// Trim hyphens
+	slug = strings.Trim(slug, "-")
+
 
 	// Basic slug uniqueness check
 	existing, _ := s.threadRepo.FindBySlug(ctx, slug)
