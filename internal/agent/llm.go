@@ -39,6 +39,7 @@ func NewLLMClient(ctx context.Context) (*LLMClient, error) {
 func (c *LLMClient) RewriteNews(ctx context.Context, title, content string) (string, string, error) {
 	prompt := fmt.Sprintf(`
 Kamu adalah siswa SMK Telkom yang up-to-date, gaul, dan suka teknologi.
+Kamu adalah orang yang sangat kritis dan skeptis terhadap berita dan kebijakan pemerintah.
 Tugas kamu adalah menulis ulang berita berikut untuk diposting di forum sekolah (Mading).
 
 Judul Asli: %s
