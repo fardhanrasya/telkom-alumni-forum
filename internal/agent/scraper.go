@@ -41,7 +41,7 @@ func ScrapeContent(url string) (string, error) {
 	c := colly.NewCollector(
 		colly.UserAgent("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"),
 	)
-	
+
 	// Default text
 	var contentBuilder strings.Builder
 
@@ -49,7 +49,7 @@ func ScrapeContent(url string) (string, error) {
 	// Kita coba target umum dulu. Detik biasanya di .detail__body-text
 	// TheVerge di .c-entry-content
 	// Kita ambil semua <p> yang panjangnya lumayan.
-	
+
 	c.OnHTML("article, .detail__body-text, .c-entry-content, #main-content", func(e *colly.HTMLElement) {
 		e.ForEach("p", func(_ int, el *colly.HTMLElement) {
 			text := strings.TrimSpace(el.Text)

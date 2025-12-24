@@ -189,7 +189,7 @@ func (s *adminService) UpdateUser(ctx context.Context, id string, input dto.Upda
 	if input.FullName != "" {
 		user.Profile.FullName = input.FullName
 	}
-	
+
 	// Optional fields logic: if not nil, update
 	if input.IdentityNumber != nil {
 		user.Profile.IdentityNumber = normalizeOptional(input.IdentityNumber)

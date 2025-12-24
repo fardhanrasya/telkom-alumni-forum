@@ -10,7 +10,7 @@ func (s *threadService) GetTrendingThreads(ctx context.Context, limit int) ([]dt
 	if limit <= 0 {
 		limit = 10
 	}
-	
+
 	threads, err := s.threadRepo.GetTrending(ctx, limit)
 	if err != nil {
 		return nil, err
@@ -37,7 +37,7 @@ func (s *threadService) GetTrendingThreads(ctx context.Context, limit int) ([]dt
 
 		// Note: We might want to optimize this by fetching likes count in bulk or joining in the repo query.
 		// However, for trending threads (usually small limit like 10), calling GetThreadLikes N times is acceptable for now.
-		// A better approach would be to include likes count in the GetTrending repo query result, 
+		// A better approach would be to include likes count in the GetTrending repo query result,
 		// but that requires changing the Thread model or returning a different struct.
 		// Since we want standard ThreadResponse, let's keep it simple.
 		likesCount, _ := s.likeService.GetThreadLikes(ctx, thread.ID)

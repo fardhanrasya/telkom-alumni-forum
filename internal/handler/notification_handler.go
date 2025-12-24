@@ -116,9 +116,9 @@ func (h *NotificationHandler) HandleWebSocket(c *gin.Context) {
 		// NOTE: In a real app, don't reimplement auth logic here.
 		// We assume the route is protected by middleware.
 		// If middleware fails for WS due to missing headers, the request won't reach here.
-		// So we advise client to pass token in header (some libs allow it) or 
+		// So we advise client to pass token in header (some libs allow it) or
 		// we modify middleware to support query param.
-		
+
 		// For now, assuming middleware put user_id in context.
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "Unauthorized"})
 		return
@@ -142,13 +142,13 @@ func (h *NotificationHandler) HandleWebSocket(c *gin.Context) {
 	channel := fmt.Sprintf("user_notifications:%s", userIDStr)
 	pubsub := h.redisClient.Subscribe(c.Request.Context(), channel)
 	defer pubsub.Close()
-	
+
 	// Wait for confirmation that subscription is created
 	_, err = pubsub.Receive(c.Request.Context())
 	if err != nil {
-         log.Printf("Failed to subscribe to redis channel: %v", err)
-         return
-    }
+		log.Printf("Failed to subscribe to redis channel: %v", err)
+		return
+	}
 
 	ch := pubsub.Channel()
 
@@ -174,10 +174,10 @@ func (h *NotificationHandler) HandleWebSocket(c *gin.Context) {
 			// Msg from Redis
 			// payload is JSON string of Notification
 			// We can just forward it directly
-			
+
 			// Optional: Unmarshal to verify/manipulate?
 			// For performance, just writing message is faster if format is already JSON
-			
+
 			err := conn.WriteMessage(websocket.TextMessage, []byte(msg.Payload))
 			if err != nil {
 				log.Printf("Failed to write message to websocket: %v", err)

@@ -9,13 +9,13 @@ import (
 )
 
 type StatHandler struct {
-	statService service.StatService
+	statService   service.StatService
 	threadService service.ThreadService
 }
 
 func NewStatHandler(statService service.StatService, threadService service.ThreadService) *StatHandler {
 	return &StatHandler{
-		statService: statService,
+		statService:   statService,
 		threadService: threadService,
 	}
 }

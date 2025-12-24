@@ -80,7 +80,9 @@ func main() {
 	adminService := service.NewAdminService(userRepo, imageStorage)
 	adminHandler := handler.NewAdminHandler(adminService)
 
-	profileService := service.NewProfileService(userRepo, imageStorage)
+	leaderboardRepo := repository.NewLeaderboardRepository(db)
+
+	profileService := service.NewProfileService(userRepo, imageStorage, leaderboardRepo)
 	profileHandler := handler.NewProfileHandler(profileService)
 
 	categoryRepo := repository.NewCategoryRepository(db)
@@ -99,10 +101,13 @@ func main() {
 	postRepo := repository.NewPostRepository(db)
 
 	likeRepo := repository.NewLikeRepository(db)
-	likeService := service.NewLikeService(redisClient, likeRepo, threadRepo, postRepo, notificationService)
+	leaderboardService := service.NewLeaderboardService(leaderboardRepo, userRepo, notificationService)
+	leaderboardHandler := handler.NewLeaderboardHandler(leaderboardService)
+
+	likeService := service.NewLikeService(redisClient, likeRepo, threadRepo, postRepo, notificationService, leaderboardService)
 	likeHandler := handler.NewLikeHandler(likeService)
 
-	threadService := service.NewThreadService(threadRepo, categoryRepo, userRepo, attachmentRepo, likeService, imageStorage, redisClient, meiliService)
+	threadService := service.NewThreadService(threadRepo, categoryRepo, userRepo, attachmentRepo, likeService, imageStorage, redisClient, meiliService, leaderboardService)
 	threadHandler := handler.NewThreadHandler(threadService)
 
 	viewService := service.NewViewService(redisClient, threadRepo)
@@ -110,7 +115,7 @@ func main() {
 		go viewService.StartViewSyncWorker(context.Background())
 	}
 
-	postService := service.NewPostService(postRepo, threadRepo, userRepo, attachmentRepo, likeService, imageStorage, redisClient, notificationService, meiliService)
+	postService := service.NewPostService(postRepo, threadRepo, userRepo, attachmentRepo, likeService, imageStorage, redisClient, notificationService, meiliService, leaderboardService)
 	postHandler := handler.NewPostHandler(postService)
 
 	// Start Like Worker
@@ -228,6 +233,8 @@ func main() {
 			menfess.POST("", menfessHandler.CreateMenfess)
 			menfess.GET("", menfessHandler.GetMenfesses)
 		}
+
+		api.GET("/leaderboard", leaderboardHandler.GetLeaderboard)
 	}
 
 	// Start Orphan Cleanup Job (Background)
@@ -270,6 +277,8 @@ func migrate(db *gorm.DB) error {
 		&model.PostLike{},
 		&model.Notification{},
 		&model.Menfess{},
+		&model.PointLog{},
+		&model.UserStats{},
 	)
 }
 

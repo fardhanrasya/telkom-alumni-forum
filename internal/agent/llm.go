@@ -27,7 +27,7 @@ func NewLLMClient(ctx context.Context) (*LLMClient, error) {
 	}
 
 	// Google sudah mematikan akses Free Tier untuk model lama (2.0) dan memindahkan jatah gratisnya ke model baru (2.5 dan 3)
-	model := client.GenerativeModel("gemini-2.5-flash") 
+	model := client.GenerativeModel("gemini-2.5-flash")
 	model.SetTemperature(0.7)
 
 	return &LLMClient{
@@ -54,7 +54,7 @@ Instruksi:
 5. Outputnya HARUS format JSON: {"title": "Judul Baru", "content": "Konten HTML Baru"}
 `, title, content)
 
-    c.model.ResponseMIMEType = "application/json"
+	c.model.ResponseMIMEType = "application/json"
 	resp, err := c.model.GenerateContent(ctx, genai.Text(prompt))
 	if err != nil {
 		return "", "", err
@@ -65,23 +65,23 @@ Instruksi:
 	}
 
 	// Simple parsing since we requested JSON but getting exact fields might need struct unmarshalling
-    type Response struct {
-        Title   string `json:"title"`
-        Content string `json:"content"`
-    }
-    
-    var result Response
-    // Unmarshal the Part if it is Text
-    for _, part := range resp.Candidates[0].Content.Parts {
-        if txt, ok := part.(genai.Text); ok {
-            if err := json.Unmarshal([]byte(txt), &result); err != nil {
-                 // Fallback if not pure JSON? Or just return error.
-                 // Given setMimeType(application/json), it should be clean.
-                 return "", "", fmt.Errorf("failed to parse JSON: %w", err)
-            }
-            return result.Title, result.Content, nil
-        }
-    }
+	type Response struct {
+		Title   string `json:"title"`
+		Content string `json:"content"`
+	}
+
+	var result Response
+	// Unmarshal the Part if it is Text
+	for _, part := range resp.Candidates[0].Content.Parts {
+		if txt, ok := part.(genai.Text); ok {
+			if err := json.Unmarshal([]byte(txt), &result); err != nil {
+				// Fallback if not pure JSON? Or just return error.
+				// Given setMimeType(application/json), it should be clean.
+				return "", "", fmt.Errorf("failed to parse JSON: %w", err)
+			}
+			return result.Title, result.Content, nil
+		}
+	}
 
 	return "", "", fmt.Errorf("no text content in response")
 }

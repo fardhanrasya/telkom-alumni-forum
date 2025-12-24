@@ -97,8 +97,8 @@ func (s *cloudinaryStorage) DeleteImage(ctx context.Context, fileURL string) err
 
 	publicID := s.extractPublicID(fileURL)
 	if publicID == "" {
-		// If we can't extract public ID, we can't delete it. 
-        // We could return error, but maybe just log it. Returns error for now.
+		// If we can't extract public ID, we can't delete it.
+		// We could return error, but maybe just log it. Returns error for now.
 		return fmt.Errorf("could not extract public ID from URL: %s", fileURL)
 	}
 

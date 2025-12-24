@@ -26,20 +26,22 @@ type LikeService interface {
 }
 
 type likeService struct {
-	redisClient *redis.Client
+	redisClient         *redis.Client
 	likeRepo            repository.LikeRepository
 	threadRepo          repository.ThreadRepository
 	postRepo            repository.PostRepository
 	notificationService NotificationService
+	leaderboardService  LeaderboardService
 }
 
-func NewLikeService(redisClient *redis.Client, likeRepo repository.LikeRepository, threadRepo repository.ThreadRepository, postRepo repository.PostRepository, notificationService NotificationService) LikeService {
+func NewLikeService(redisClient *redis.Client, likeRepo repository.LikeRepository, threadRepo repository.ThreadRepository, postRepo repository.PostRepository, notificationService NotificationService, leaderboardService LeaderboardService) LikeService {
 	return &likeService{
 		redisClient:         redisClient,
 		likeRepo:            likeRepo,
 		threadRepo:          threadRepo,
 		postRepo:            postRepo,
 		notificationService: notificationService,
+		leaderboardService:  leaderboardService,
 	}
 }
 
@@ -48,15 +50,15 @@ const (
 )
 
 type LikeTask struct {
-	Type     string `json:"type"`      // "thread" or "post"
-	Action   string `json:"action"`    // "like" or "unlike"
+	Type     string `json:"type"`   // "thread" or "post"
+	Action   string `json:"action"` // "like" or "unlike"
 	UserID   string `json:"user_id"`
 	TargetID string `json:"target_id"`
 }
 
 func (s *likeService) LikeThread(ctx context.Context, userID uuid.UUID, threadID uuid.UUID) error {
 	key := fmt.Sprintf("thread_likes:%s", threadID.String())
-	
+
 	// 1. Check if user already liked in Redis
 	isMember, err := s.redisClient.SIsMember(ctx, key, userID.String()).Result()
 	if err != nil {
@@ -85,10 +87,10 @@ func (s *likeService) UnlikeThread(ctx context.Context, userID uuid.UUID, thread
 	key := fmt.Sprintf("thread_likes:%s", threadID.String())
 
 	// 1. Remove from Redis
-	// We don't necessarily need to check if exists, just remove. 
+	// We don't necessarily need to check if exists, just remove.
 	// But if strict:
 	// isMember, _ := s.redisClient.SIsMember(...)
-	
+
 	if err := s.redisClient.SRem(ctx, key, userID.String()).Err(); err != nil {
 		return err
 	}
@@ -200,7 +202,7 @@ func (s *likeService) StartWorker(ctx context.Context) {
 		if len(res) < 2 {
 			continue
 		}
-		
+
 		var task LikeTask
 		if err := json.Unmarshal([]byte(res[1]), &task); err != nil {
 			log.Printf("Invalid like task json: %v", err)
@@ -225,63 +227,73 @@ func (s *likeService) processTask(ctx context.Context, task LikeTask) {
 
 	var opErr error
 	switch task.Type {
-		case "thread":
-			if task.Action == "like" {
-				opErr = s.likeRepo.LikeThread(ctx, userID, targetID)
-				if opErr == nil {
-					// Notify Thread Author
-					thread, err := s.threadRepo.FindByID(ctx, targetID)
-					if err == nil && thread.UserID != userID {
-						notif := &model.Notification{
-							UserID:     thread.UserID,
-							ActorID:    userID,
-							EntityID:   thread.ID,
-							EntitySlug: thread.Slug,
-							EntityType: "thread",
-							Type:       "like_thread",
-							Message:    "Someone liked your thread",
-						}
-						_ = s.notificationService.CreateNotification(ctx, notif)
+	case "thread":
+		if task.Action == "like" {
+			opErr = s.likeRepo.LikeThread(ctx, userID, targetID)
+			if opErr == nil {
+				// Notify Thread Author
+				thread, err := s.threadRepo.FindByID(ctx, targetID)
+				if err == nil && thread.UserID != userID {
+					notif := &model.Notification{
+						UserID:     thread.UserID,
+						ActorID:    userID,
+						EntityID:   thread.ID,
+						EntitySlug: thread.Slug,
+						EntityType: "thread",
+						Type:       "like_thread",
+						Message:    "Someone liked your thread",
 					}
-				}
-			} else {
-				opErr = s.likeRepo.UnlikeThread(ctx, userID, targetID)
-			}
-		case "post":
-			if task.Action == "like" {
-				opErr = s.likeRepo.LikePost(ctx, userID, targetID)
-				if opErr == nil {
-					// Notify Post Author
-					post, err := s.postRepo.FindByID(ctx, targetID)
-					if err == nil && post.UserID != userID {
-						// Need thread for slug
-						// post doesn't usually preload thread unless FindByID does.
-						// Safest is to fetch thread.
-						thread, errThread := s.threadRepo.FindByID(ctx, post.ThreadID)
-						var slug string
-						if errThread == nil {
-							slug = thread.Slug
-						}
+					_ = s.notificationService.CreateNotification(ctx, notif)
 
-						notif := &model.Notification{
-							UserID:     post.UserID,
-							ActorID:    userID,
-							EntityID:   post.ID,
-							EntitySlug: slug,
-							EntityType: "post",
-							Type:       "like_post",
-							Message:    "Someone liked your post",
-						}
-						_ = s.notificationService.CreateNotification(ctx, notif)
+					// Gamification: Give points to thread author
+					if s.leaderboardService != nil {
+						s.leaderboardService.AddGamificationPointsAsync(thread.UserID, ActionLikeReceived, thread.ID.String(), "threads")
 					}
 				}
-			} else {
-				opErr = s.likeRepo.UnlikePost(ctx, userID, targetID)
 			}
+		} else {
+			opErr = s.likeRepo.UnlikeThread(ctx, userID, targetID)
 		}
+	case "post":
+		if task.Action == "like" {
+			opErr = s.likeRepo.LikePost(ctx, userID, targetID)
+			if opErr == nil {
+				// Notify Post Author
+				post, err := s.postRepo.FindByID(ctx, targetID)
+				if err == nil && post.UserID != userID {
+					// Need thread for slug
+					// post doesn't usually preload thread unless FindByID does.
+					// Safest is to fetch thread.
+					thread, errThread := s.threadRepo.FindByID(ctx, post.ThreadID)
+					var slug string
+					if errThread == nil {
+						slug = thread.Slug
+					}
+
+					notif := &model.Notification{
+						UserID:     post.UserID,
+						ActorID:    userID,
+						EntityID:   post.ID,
+						EntitySlug: slug,
+						EntityType: "post",
+						Type:       "like_post",
+						Message:    "Someone liked your post",
+					}
+					_ = s.notificationService.CreateNotification(ctx, notif)
+
+					// Gamification: Give points to post author
+					if s.leaderboardService != nil {
+						s.leaderboardService.AddGamificationPointsAsync(post.UserID, ActionLikeReceived, post.ID.String(), "posts")
+					}
+				}
+			}
+		} else {
+			opErr = s.likeRepo.UnlikePost(ctx, userID, targetID)
+		}
+	}
 
 	if opErr != nil {
-		// Log error, maybe retry? 
+		// Log error, maybe retry?
 		// For duplicates on 'like', we might ignore.
 		log.Printf("Failed to process like task %+v: %v", task, opErr)
 	}

@@ -22,8 +22,8 @@ type MeiliSearchService interface {
 }
 
 type meiliSearchService struct {
-	client    meilisearch.ServiceManager
-	masterKey string
+	client        meilisearch.ServiceManager
+	masterKey     string
 	signingKeyUID string
 	signingKey    string
 	sanitizer     *bluemonday.Policy
@@ -68,13 +68,13 @@ func (s *meiliSearchService) initSigningKey() {
 	// 3. Create new key if not found
 	// Expiry: nil (forever) or long time
 	expiry := time.Now().AddDate(100, 0, 0)
-    
+
 	key, err := s.client.CreateKey(&meilisearch.Key{
 		Description: "Key to sign tenant tokens",
 		Name:        "TenantTokenSigner",
 		Actions:     []string{"search"},
 		Indexes:     []string{"threads", "posts"},
-		ExpiresAt:   expiry, 
+		ExpiresAt:   expiry,
 	})
 	if err != nil {
 		log.Printf("Failed to create signing key: %v", err)
@@ -114,7 +114,7 @@ func (s *meiliSearchService) initIndexes() {
 	if err != nil {
 		log.Printf("Failed to update posts filterable attributes: %v", err)
 	}
-	
+
 	postSortable := []string{"created_at"}
 	_, err = s.client.Index("posts").UpdateSortableAttributes(&postSortable)
 	if err != nil {
@@ -126,28 +126,28 @@ func (s *meiliSearchService) initIndexes() {
 
 // Structs for Meilisearch Indexing
 type meiliThreadDoc struct {
-	ID           string           `json:"id"`
-	Title        string           `json:"title"`
-	Content      string           `json:"content"`
-	Slug         string           `json:"slug"`
-	Audience     string           `json:"audience"`
-	AllowedRoles []string         `json:"allowed_roles"`
-	Views        int              `json:"views"`
-	CreatedAt    int64            `json:"created_at"`
-	CategoryID   string           `json:"category_id"`
-	User         meiliUserSubset  `json:"user"`
+	ID           string              `json:"id"`
+	Title        string              `json:"title"`
+	Content      string              `json:"content"`
+	Slug         string              `json:"slug"`
+	Audience     string              `json:"audience"`
+	AllowedRoles []string            `json:"allowed_roles"`
+	Views        int                 `json:"views"`
+	CreatedAt    int64               `json:"created_at"`
+	CategoryID   string              `json:"category_id"`
+	User         meiliUserSubset     `json:"user"`
 	Category     meiliCategorySubset `json:"category"`
 }
 
 type meiliPostDoc struct {
-	ID           string           `json:"id"`
-	Content      string           `json:"content"`
-	ThreadID     string           `json:"thread_id"`
-	ThreadSlug   string           `json:"thread_slug"`
-	ThreadTitle  string           `json:"thread_title"`
-	AllowedRoles []string         `json:"allowed_roles"`
-	CreatedAt    int64            `json:"created_at"`
-	User         meiliUserSubset  `json:"user"`
+	ID           string          `json:"id"`
+	Content      string          `json:"content"`
+	ThreadID     string          `json:"thread_id"`
+	ThreadSlug   string          `json:"thread_slug"`
+	ThreadTitle  string          `json:"thread_title"`
+	AllowedRoles []string        `json:"allowed_roles"`
+	CreatedAt    int64           `json:"created_at"`
+	User         meiliUserSubset `json:"user"`
 }
 
 type meiliUserSubset struct {
@@ -196,16 +196,16 @@ func (s *meiliSearchService) IndexThread(thread *model.Thread) error {
 		CreatedAt:    thread.CreatedAt.Unix(),
 		CategoryID:   thread.CategoryID.String(), // Dereference if needed, but assuming model has *UUID handled or assuming it's UUID value. Double check model.
 		User: meiliUserSubset{
-			Username:   thread.User.Username,
-			AvatarURL:  getStringOrEmpty(thread.User.AvatarURL),
+			Username:  thread.User.Username,
+			AvatarURL: getStringOrEmpty(thread.User.AvatarURL),
 		},
 		Category: meiliCategorySubset{
 			Name: thread.Category.Name,
 		},
 	}
-	
+
 	// Double check CategoryID type in model.
-	// In model: CategoryID *uuid.UUID. 
+	// In model: CategoryID *uuid.UUID.
 	if thread.CategoryID != nil {
 		doc.CategoryID = thread.CategoryID.String()
 	}
@@ -246,8 +246,8 @@ func (s *meiliSearchService) IndexPost(post *model.Post) error {
 		AllowedRoles: allowedRoles,
 		CreatedAt:    post.CreatedAt.Unix(),
 		User: meiliUserSubset{
-			Username:   post.User.Username,
-			AvatarURL:  getStringOrEmpty(post.User.AvatarURL),
+			Username:  post.User.Username,
+			AvatarURL: getStringOrEmpty(post.User.AvatarURL),
 		},
 	}
 
@@ -285,7 +285,7 @@ func (s *meiliSearchService) GenerateSearchToken(userRole string) (string, error
 
 	// Rules based on role
 	var filterRules string
-	
+
 	switch userRole {
 	case "admin":
 		filterRules = "" // No filter
@@ -316,8 +316,8 @@ func (s *meiliSearchService) GenerateSearchToken(userRole string) (string, error
 
 	// Use the dedicated signing Key
 	token, err := s.client.GenerateTenantToken(s.signingKeyUID, searchRules, &meilisearch.TenantTokenOptions{
-		APIKey:    s.signingKey, 
-		ExpiresAt: time.Now().Add(24 * time.Hour), 
+		APIKey:    s.signingKey,
+		ExpiresAt: time.Now().Add(24 * time.Hour),
 	})
 
 	if err != nil {

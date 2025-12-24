@@ -22,28 +22,30 @@ type PostService interface {
 }
 
 type postService struct {
-	postRepo       repository.PostRepository
-	threadRepo     repository.ThreadRepository
-	userRepo       repository.UserRepository
-	attachmentRepo repository.AttachmentRepository
-	likeService    LikeService
-	fileStorage    storage.ImageStorage
-	redisClient    *redis.Client
+	postRepo            repository.PostRepository
+	threadRepo          repository.ThreadRepository
+	userRepo            repository.UserRepository
+	attachmentRepo      repository.AttachmentRepository
+	likeService         LikeService
+	fileStorage         storage.ImageStorage
+	redisClient         *redis.Client
 	notificationService NotificationService
-	meili          MeiliSearchService
+	meili               MeiliSearchService
+	leaderboardService  LeaderboardService
 }
 
-func NewPostService(postRepo repository.PostRepository, threadRepo repository.ThreadRepository, userRepo repository.UserRepository, attachmentRepo repository.AttachmentRepository, likeService LikeService, fileStorage storage.ImageStorage, redisClient *redis.Client, notificationService NotificationService, meili MeiliSearchService) PostService {
+func NewPostService(postRepo repository.PostRepository, threadRepo repository.ThreadRepository, userRepo repository.UserRepository, attachmentRepo repository.AttachmentRepository, likeService LikeService, fileStorage storage.ImageStorage, redisClient *redis.Client, notificationService NotificationService, meili MeiliSearchService, leaderboardService LeaderboardService) PostService {
 	return &postService{
-		postRepo:       postRepo,
-		threadRepo:     threadRepo,
-		userRepo:       userRepo,
-		attachmentRepo: attachmentRepo,
-		likeService:    likeService,
-		fileStorage:    fileStorage,
-		redisClient:    redisClient,
+		postRepo:            postRepo,
+		threadRepo:          threadRepo,
+		userRepo:            userRepo,
+		attachmentRepo:      attachmentRepo,
+		likeService:         likeService,
+		fileStorage:         fileStorage,
+		redisClient:         redisClient,
 		notificationService: notificationService,
-		meili:          meili,
+		meili:               meili,
+		leaderboardService:  leaderboardService,
 	}
 }
 
@@ -178,6 +180,11 @@ func (s *postService) CreatePost(ctx context.Context, userID uuid.UUID, req dto.
 			}
 			_ = s.notificationService.CreateNotification(context.Background(), notification)
 		}
+
+		// Gamification: Give points to thread author (Engagement)
+		if thread.UserID != userID && s.leaderboardService != nil {
+			s.leaderboardService.AddGamificationPointsAsync(thread.UserID, ActionCommentReceived, post.ID.String(), "posts")
+		}
 	}()
 
 	// Index to Meilisearch
@@ -189,7 +196,7 @@ func (s *postService) CreatePost(ctx context.Context, userID uuid.UUID, req dto.
 			post.User = *u
 		}
 	}
-	
+
 	if s.meili != nil {
 		if err := s.meili.IndexPost(post); err != nil {
 			fmt.Printf("Failed to index post: %v\n", err)
@@ -374,7 +381,7 @@ func (s *postService) DeletePost(ctx context.Context, userID uuid.UUID, postID u
 	if s.meili != nil {
 		_ = s.meili.DeletePost(postID.String())
 	}
-	
+
 	return nil
 }
 

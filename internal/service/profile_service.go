@@ -20,14 +20,16 @@ type ProfileService interface {
 }
 
 type profileService struct {
-	repo         repository.UserRepository
-	imageStorage storage.ImageStorage
+	repo            repository.UserRepository
+	imageStorage    storage.ImageStorage
+	leaderboardRepo repository.LeaderboardRepository
 }
 
-func NewProfileService(repo repository.UserRepository, imageStorage storage.ImageStorage) ProfileService {
+func NewProfileService(repo repository.UserRepository, imageStorage storage.ImageStorage, leaderboardRepo repository.LeaderboardRepository) ProfileService {
 	return &profileService{
-		repo:         repo,
-		imageStorage: imageStorage,
+		repo:            repo,
+		imageStorage:    imageStorage,
+		leaderboardRepo: leaderboardRepo,
 	}
 }
 
@@ -90,9 +92,29 @@ func (s *profileService) UpdateProfile(ctx context.Context, userID string, input
 
 	updatedUser.PasswordHash = ""
 
+	// Get gamification stats
+	var allTimeScore, weeklyScore int
+	if s.leaderboardRepo != nil {
+		stats, err := s.leaderboardRepo.GetUserStatsByUserID(updatedUser.ID)
+		if err == nil && stats != nil {
+			allTimeScore = stats.TotalScoreAllTime
+			weeklyScore = stats.TotalScoreWeekly
+		}
+	}
+	gamificationStatus := GetGamificationStatusWithWeekly(allTimeScore, weeklyScore)
+
 	return &dto.UpdateProfileResponse{
 		User:    updatedUser,
 		Profile: updatedUser.Profile,
+		GamificationStatus: dto.GamificationStatus{
+			RankName:      gamificationStatus.RankName,
+			NextRank:      gamificationStatus.NextRank,
+			CurrentPoints: gamificationStatus.CurrentPoints,
+			TargetPoints:  gamificationStatus.TargetPoints,
+			Progress:      gamificationStatus.Progress,
+			WeeklyPoints:  gamificationStatus.WeeklyPoints,
+			WeeklyLabel:   gamificationStatus.WeeklyLabel,
+		},
 	}, nil
 }
 
@@ -102,11 +124,33 @@ func (s *profileService) GetProfileByUsername(ctx context.Context, username stri
 		return nil, errors.New("user not found")
 	}
 
+	// Get gamification stats
+	var allTimeScore, weeklyScore int
+	if s.leaderboardRepo != nil {
+		stats, err := s.leaderboardRepo.GetUserStatsByUserID(user.ID)
+		if err == nil && stats != nil {
+			allTimeScore = stats.TotalScoreAllTime
+			weeklyScore = stats.TotalScoreWeekly
+		}
+	}
+
+	// Calculate gamification status
+	gamificationStatus := GetGamificationStatusWithWeekly(allTimeScore, weeklyScore)
+
 	response := &dto.PublicProfileResponse{
 		Username:  user.Username,
 		Role:      user.Role.Name,
 		AvatarURL: user.AvatarURL,
 		CreatedAt: user.CreatedAt,
+		GamificationStatus: dto.GamificationStatus{
+			RankName:      gamificationStatus.RankName,
+			NextRank:      gamificationStatus.NextRank,
+			CurrentPoints: gamificationStatus.CurrentPoints,
+			TargetPoints:  gamificationStatus.TargetPoints,
+			Progress:      gamificationStatus.Progress,
+			WeeklyPoints:  gamificationStatus.WeeklyPoints,
+			WeeklyLabel:   gamificationStatus.WeeklyLabel,
+		},
 	}
 
 	if user.Profile != nil {
@@ -125,8 +169,28 @@ func (s *profileService) GetCurrentProfile(ctx context.Context, userID string) (
 
 	user.PasswordHash = ""
 
+	// Get gamification stats
+	var allTimeScore, weeklyScore int
+	if s.leaderboardRepo != nil {
+		stats, err := s.leaderboardRepo.GetUserStatsByUserID(user.ID)
+		if err == nil && stats != nil {
+			allTimeScore = stats.TotalScoreAllTime
+			weeklyScore = stats.TotalScoreWeekly
+		}
+	}
+	gamificationStatus := GetGamificationStatusWithWeekly(allTimeScore, weeklyScore)
+
 	return &dto.UpdateProfileResponse{
 		User:    user,
 		Profile: user.Profile,
+		GamificationStatus: dto.GamificationStatus{
+			RankName:      gamificationStatus.RankName,
+			NextRank:      gamificationStatus.NextRank,
+			CurrentPoints: gamificationStatus.CurrentPoints,
+			TargetPoints:  gamificationStatus.TargetPoints,
+			Progress:      gamificationStatus.Progress,
+			WeeklyPoints:  gamificationStatus.WeeklyPoints,
+			WeeklyLabel:   gamificationStatus.WeeklyLabel,
+		},
 	}, nil
 }

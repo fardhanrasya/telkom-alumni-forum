@@ -28,30 +28,32 @@ type ThreadService interface {
 }
 
 type threadService struct {
-	threadRepo     repository.ThreadRepository
-	categoryRepo   repository.CategoryRepository
-	userRepo       repository.UserRepository
-	attachmentRepo repository.AttachmentRepository
-	likeService    LikeService
-	fileStorage    storage.ImageStorage
-	redisClient    *redis.Client
-	viewService    ViewService
-	meili          MeiliSearchService
+	threadRepo         repository.ThreadRepository
+	categoryRepo       repository.CategoryRepository
+	userRepo           repository.UserRepository
+	attachmentRepo     repository.AttachmentRepository
+	likeService        LikeService
+	fileStorage        storage.ImageStorage
+	redisClient        *redis.Client
+	viewService        ViewService
+	meili              MeiliSearchService
+	leaderboardService LeaderboardService
 }
 
-func NewThreadService(threadRepo repository.ThreadRepository, categoryRepo repository.CategoryRepository, userRepo repository.UserRepository, attachmentRepo repository.AttachmentRepository, likeService LikeService, fileStorage storage.ImageStorage, redisClient *redis.Client, meili MeiliSearchService) ThreadService {
+func NewThreadService(threadRepo repository.ThreadRepository, categoryRepo repository.CategoryRepository, userRepo repository.UserRepository, attachmentRepo repository.AttachmentRepository, likeService LikeService, fileStorage storage.ImageStorage, redisClient *redis.Client, meili MeiliSearchService, leaderboardService LeaderboardService) ThreadService {
 	viewService := NewViewService(redisClient, threadRepo)
 
 	return &threadService{
-		threadRepo:     threadRepo,
-		categoryRepo:   categoryRepo,
-		userRepo:       userRepo,
-		attachmentRepo: attachmentRepo,
-		likeService:    likeService,
-		fileStorage:    fileStorage,
-		redisClient:    redisClient,
-		viewService:    viewService,
-		meili:          meili,
+		threadRepo:         threadRepo,
+		categoryRepo:       categoryRepo,
+		userRepo:           userRepo,
+		attachmentRepo:     attachmentRepo,
+		likeService:        likeService,
+		fileStorage:        fileStorage,
+		redisClient:        redisClient,
+		viewService:        viewService,
+		meili:              meili,
+		leaderboardService: leaderboardService,
 	}
 }
 
@@ -133,7 +135,6 @@ func (s *threadService) CreateThread(ctx context.Context, userID uuid.UUID, req 
 	// Trim hyphens
 	slug = strings.Trim(slug, "-")
 
-
 	// Basic slug uniqueness check
 	existing, _ := s.threadRepo.FindBySlug(ctx, slug)
 	if existing != nil {
@@ -165,13 +166,17 @@ func (s *threadService) CreateThread(ctx context.Context, userID uuid.UUID, req 
 
 	// Index to Meilisearch
 	thread.User = *user
-	thread.Category = *category
 	if s.meili != nil {
 		if err := s.meili.IndexThread(thread); err != nil {
 			// Log error but don't fail the request?
 			// Or fail? Best to log.
 			fmt.Printf("Failed to index thread: %v\n", err)
 		}
+	}
+
+	// Add Gamification Points
+	if s.leaderboardService != nil {
+		s.leaderboardService.AddGamificationPointsAsync(thread.UserID, ActionCreateThread, thread.ID.String(), "threads")
 	}
 
 	return nil
@@ -546,7 +551,7 @@ func (s *threadService) DeleteThread(ctx context.Context, userID uuid.UUID, thre
 	if s.meili != nil {
 		_ = s.meili.DeleteThread(threadID.String())
 	}
-	
+
 	return nil
 }
 

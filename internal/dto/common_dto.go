@@ -2,7 +2,6 @@ package dto
 
 import "github.com/google/uuid"
 
-
 type AuthorResponse struct {
 	Username  string  `json:"username"`
 	AvatarURL *string `json:"avatar_url"`

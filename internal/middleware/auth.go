@@ -33,7 +33,7 @@ func (m *AuthMiddleware) RequireAuth() gin.HandlerFunc {
 
 		tokenString := ""
 		authHeader := c.GetHeader("Authorization")
-		
+
 		if authHeader != "" {
 			parts := strings.Split(authHeader, " ")
 			if len(parts) == 2 && parts[0] == "Bearer" {

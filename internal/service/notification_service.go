@@ -40,7 +40,7 @@ func (s *notificationService) CreateNotification(ctx context.Context, notificati
 	// 2. Publish to Redis if Redis is available
 	if s.redisClient != nil {
 		channel := fmt.Sprintf("user_notifications:%s", notification.UserID.String())
-		
+
 		payload, err := json.Marshal(notification)
 		if err == nil {
 			s.redisClient.Publish(ctx, channel, payload)

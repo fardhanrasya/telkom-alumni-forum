@@ -33,7 +33,7 @@ func (r *likeRepository) LikeThread(ctx context.Context, userID uuid.UUID, threa
 	// Use Clause to ignore duplicate key error just in case
 	return r.db.WithContext(ctx).Clauses().Create(&like).Error
 	// Or standard Create, if duplicate it returns error, which is fine
-	// return r.db.WithContext(ctx).Create(&like).Error 
+	// return r.db.WithContext(ctx).Create(&like).Error
 }
 
 func (r *likeRepository) UnlikeThread(ctx context.Context, userID uuid.UUID, threadID uuid.UUID) error {

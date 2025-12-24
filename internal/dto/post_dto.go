@@ -22,7 +22,7 @@ type PostResponse struct {
 	Author      AuthorResponse       `json:"author"`
 	Attachments []AttachmentResponse `json:"attachments,omitempty"`
 	LikesCount  int64                `json:"likes_count"`
-	Replies     []*PostResponse     `json:"replies,omitempty"`
+	Replies     []*PostResponse      `json:"replies,omitempty"`
 	CreatedAt   string               `json:"created_at"`
 	UpdatedAt   string               `json:"updated_at"`
 }

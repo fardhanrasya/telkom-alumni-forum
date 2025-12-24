@@ -70,8 +70,8 @@ func (h *MenfessHandler) GetMenfesses(c *gin.Context) {
 	}
 
 	// TODO: Performance Improvement
-    // Saat ini kita query DB untuk cek role. Untuk skala besar, 
-    // sebaiknya role disimpan di JWT Claims context untuk menghindari DB call
+	// Saat ini kita query DB untuk cek role. Untuk skala besar,
+	// sebaiknya role disimpan di JWT Claims context untuk menghindari DB call
 	user, err := h.userRepo.FindByID(c.Request.Context(), userIDStr.(string))
 	if err != nil {
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "user not found"})

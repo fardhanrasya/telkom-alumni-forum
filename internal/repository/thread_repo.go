@@ -62,7 +62,7 @@ func (r *threadRepository) FindByID(ctx context.Context, id uuid.UUID) (*model.T
 func (r *threadRepository) FindAll(ctx context.Context, categoryID *uuid.UUID, search string, audiences []string, sortBy string, offset, limit int) ([]*model.Thread, int64, error) {
 	var threads []*model.Thread
 	var total int64
-	
+
 	query := r.db.WithContext(ctx).
 		Preload("Category").
 		Preload("User").

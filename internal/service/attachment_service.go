@@ -71,7 +71,7 @@ func (s *attachmentService) CleanupOrphanAttachments(ctx context.Context) error 
 	for _, orphan := range orphans {
 		// 1. Delete from Cloudinary
 		if err := s.fileStorage.DeleteImage(ctx, orphan.FileURL); err != nil {
-			// e.g., print error but continue with other files? 
+			// e.g., print error but continue with other files?
 			// In a real app we'd use a logger.
 		}
 
