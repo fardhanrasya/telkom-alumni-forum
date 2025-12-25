@@ -174,9 +174,9 @@ func (s *threadService) CreateThread(ctx context.Context, userID uuid.UUID, req 
 		}
 	}
 
-	// Add Gamification Points
+	// Add Gamification Points (nil actorID for self-actions like create_thread)
 	if s.leaderboardService != nil {
-		s.leaderboardService.AddGamificationPointsAsync(thread.UserID, ActionCreateThread, thread.ID.String(), "threads")
+		s.leaderboardService.AddGamificationPointsAsync(thread.UserID, ActionCreateThread, thread.ID.String(), "threads", nil)
 	}
 
 	return nil

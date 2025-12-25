@@ -181,9 +181,9 @@ func (s *postService) CreatePost(ctx context.Context, userID uuid.UUID, req dto.
 			_ = s.notificationService.CreateNotification(context.Background(), notification)
 		}
 
-		// Gamification: Give points to thread author (Engagement)
+		// Gamification: Give points to thread author (Engagement) - nil actorID for comment events
 		if thread.UserID != userID && s.leaderboardService != nil {
-			s.leaderboardService.AddGamificationPointsAsync(thread.UserID, ActionCommentReceived, post.ID.String(), "posts")
+			s.leaderboardService.AddGamificationPointsAsync(thread.UserID, ActionCommentReceived, post.ID.String(), "posts", nil)
 		}
 	}()
 

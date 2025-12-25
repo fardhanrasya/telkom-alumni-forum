@@ -25,7 +25,9 @@ const (
 )
 
 type LeaderboardService interface {
-	AddGamificationPointsAsync(targetUserID uuid.UUID, actionType string, referenceID string, referenceTable string)
+	// AddGamificationPointsAsync adds gamification points to a user asynchronously
+	// actorID is optional (nil for non-like actions like create_thread) - it's the user who performed the action (e.g., the liker)
+	AddGamificationPointsAsync(targetUserID uuid.UUID, actionType string, referenceID string, referenceTable string, actorID *uuid.UUID)
 	GetLeaderboard(limit int, timeframe string) ([]dto.LeaderboardEntry, error)
 }
 
@@ -44,7 +46,7 @@ func NewLeaderboardService(repo repository.LeaderboardRepository, userRepo repos
 	}
 }
 
-func (s *leaderboardService) AddGamificationPointsAsync(targetUserID uuid.UUID, actionType string, referenceID string, referenceTable string) {
+func (s *leaderboardService) AddGamificationPointsAsync(targetUserID uuid.UUID, actionType string, referenceID string, referenceTable string, actorID *uuid.UUID) {
 	// Execute in background
 	go func() {
 		ctx := context.Background()
@@ -60,7 +62,22 @@ func (s *leaderboardService) AddGamificationPointsAsync(targetUserID uuid.UUID, 
 			return
 		}
 
-		// 2. Get current stats to check rank before adding points
+		// 2. For like actions, check if points were already given from this actor
+		// This prevents the like/unlike exploit
+		if actionType == ActionLikeReceived && actorID != nil {
+			exists, err := s.repo.HasLikePointExists(*actorID, actionType, referenceID)
+			if err != nil {
+				log.Printf("Error checking like point existence: %v", err)
+				return
+			}
+			if exists {
+				// Points already given for this like, skip to prevent exploit
+				log.Printf("🚫 Duplicate like point prevented: actor=%s already liked reference=%s", actorID, referenceID)
+				return
+			}
+		}
+
+		// 3. Get current stats to check rank before adding points
 		currentStats, _ := s.repo.GetUserStatsByUserID(targetUserID)
 		var previousScore int
 		if currentStats != nil {
@@ -68,7 +85,7 @@ func (s *leaderboardService) AddGamificationPointsAsync(targetUserID uuid.UUID, 
 		}
 		previousRank := GetGamificationStatus(previousScore).RankName
 
-		// 3. Calculate points to add
+		// 4. Calculate points to add
 		points := 0
 		switch actionType {
 		case ActionLikeReceived:
@@ -92,13 +109,14 @@ func (s *leaderboardService) AddGamificationPointsAsync(targetUserID uuid.UUID, 
 			return
 		}
 
-		// 4. Create Log
+		// 5. Create Log with ActorID
 		logEntry := &model.PointLog{
 			UserID:         targetUserID,
 			ActionType:     actionType,
 			Points:         points,
 			ReferenceID:    referenceID,
 			ReferenceTable: referenceTable,
+			ActorID:        actorID,
 			CreatedAt:      time.Now(),
 		}
 
@@ -107,13 +125,13 @@ func (s *leaderboardService) AddGamificationPointsAsync(targetUserID uuid.UUID, 
 			return
 		}
 
-		// 5. Update Stats
+		// 6. Update Stats
 		if err := s.repo.UpdateUserStats(targetUserID, points); err != nil {
 			log.Printf("Failed to update user stats for user %s: %v", targetUserID, err)
 			return
 		}
 
-		// 6. Check if rank changed (rank up!)
+		// 7. Check if rank changed (rank up!)
 		newScore := previousScore + points
 		newRank := GetGamificationStatus(newScore).RankName
 

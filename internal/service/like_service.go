@@ -245,9 +245,9 @@ func (s *likeService) processTask(ctx context.Context, task LikeTask) {
 					}
 					_ = s.notificationService.CreateNotification(ctx, notif)
 
-					// Gamification: Give points to thread author
+					// Gamification: Give points to thread author (userID is the liker/actor)
 					if s.leaderboardService != nil {
-						s.leaderboardService.AddGamificationPointsAsync(thread.UserID, ActionLikeReceived, thread.ID.String(), "threads")
+						s.leaderboardService.AddGamificationPointsAsync(thread.UserID, ActionLikeReceived, thread.ID.String(), "threads", &userID)
 					}
 				}
 			}
@@ -281,9 +281,9 @@ func (s *likeService) processTask(ctx context.Context, task LikeTask) {
 					}
 					_ = s.notificationService.CreateNotification(ctx, notif)
 
-					// Gamification: Give points to post author
+					// Gamification: Give points to post author (userID is the liker/actor)
 					if s.leaderboardService != nil {
-						s.leaderboardService.AddGamificationPointsAsync(post.UserID, ActionLikeReceived, post.ID.String(), "posts")
+						s.leaderboardService.AddGamificationPointsAsync(post.UserID, ActionLikeReceived, post.ID.String(), "posts", &userID)
 					}
 				}
 			}

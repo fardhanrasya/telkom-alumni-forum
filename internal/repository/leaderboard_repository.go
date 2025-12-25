@@ -15,6 +15,9 @@ type LeaderboardRepository interface {
 	GetDailyThreadCount(userID uuid.UUID, date time.Time) (int64, error)
 	GetTopUsers(limit int, timeframe string) ([]model.UserStats, error)
 	GetUserStatsByUserID(userID uuid.UUID) (*model.UserStats, error)
+	// HasLikePointExists checks if a point log already exists for a given actor liking a specific entity
+	// This is used to prevent duplicate points from like/unlike exploit
+	HasLikePointExists(actorID uuid.UUID, actionType string, referenceID string) (bool, error)
 }
 
 type leaderboardRepository struct {
@@ -239,4 +242,19 @@ func (r *leaderboardRepository) GetUserStatsByUserID(userID uuid.UUID) (*model.U
 	stats.TotalScoreWeekly = weeklyScore
 
 	return &stats, nil
+}
+
+// HasLikePointExists checks if a point log already exists for a given actor liking a specific entity
+// This prevents the like/unlike exploit where users could spam like/unlike to farm points
+func (r *leaderboardRepository) HasLikePointExists(actorID uuid.UUID, actionType string, referenceID string) (bool, error) {
+	var count int64
+	err := r.db.Model(&model.PointLog{}).
+		Where("actor_id = ? AND action_type = ? AND reference_id = ?", actorID, actionType, referenceID).
+		Count(&count).Error
+
+	if err != nil {
+		return false, err
+	}
+
+	return count > 0, nil
 }
