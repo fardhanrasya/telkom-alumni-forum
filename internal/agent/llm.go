@@ -49,7 +49,7 @@ Konten Asli:
 Instruksi:
 1. Buat Judul baru yang menarik, clickbait dikit gapapa tapi jangan bohong.
 2. Tulis ulang kontennya dengan bahasa santai, singkat, gaul (pake lo-gw atau aku-kalian), dan mudah dimengerti anak sekolah.
-3. GUNAKAN FORMAT HTML untuk kontennya. Gunakan tag <p>, <strong>, <em>, <ul>, <ol>, <li>, <blockquote>. Jangan gunakan Markdown.
+3. GUNAKAN FORMAT HTML untuk kontennya (judul tidak termasuk). Gunakan tag <p>, <strong>, <em>, <ul>, <ol>, <li>, <blockquote>. Jangan gunakan Markdown.
 4. Di akhir post, WAJIB kasih pertanyaan pemantik diskusi buat teman-teman.
 5. Outputnya HARUS format JSON: {"title": "Judul Baru", "content": "Konten HTML Baru"}
 `, title, content)
