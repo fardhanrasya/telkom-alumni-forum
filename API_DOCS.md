@@ -701,6 +701,35 @@ Login untuk semua user (tidak ada perubahan).
 }
 ```
 
+### ✅ GET /api/auth/google/login
+
+Menginisialisasi proses login menggunakan Google OAuth. Endpoint ini akan melakukan **redirect** ke halaman login Google.
+
+**Cara Penggunaan:**
+Frontend cukup membuat link/tombol yang mengarah ke URL ini.
+
+```
+GET http://localhost:8080/api/auth/google/login
+```
+
+**Response (307 Temporary Redirect):**
+Browser akan diarahkan ke Google.
+
+### ✅ GET /api/auth/google/callback
+
+Endpoint callback yang dipanggil oleh Google setelah user memberikan izin.
+
+**Query Parameter:**
+- `code`: Authorization code dari Google.
+
+**Behavior:**
+- Backend akan menukar `code` dengan Token.
+- Backend akan mengecek domain email (wajib `@student.smktelkom-jkt.sch.id`).
+- Jika user belum ada, akan dibuatkan user baru secara otomatis.
+- **Success Link**: Redirect ke `FRONTEND_URL/auth/google/callback?token=ACCESS_TOKEN&search_token=SEARCH_TOKEN`.
+- **Error Link**: Redirect ke `FRONTEND_URL/login?error=MESSAGE`.
+```
+
 ## Error Response
 
 Semua endpoint akan mengembalikan error message yang jelas dalam bahasa Indonesia:

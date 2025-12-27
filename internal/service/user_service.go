@@ -2,6 +2,7 @@ package service
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"log"
 	"os"
@@ -14,12 +15,17 @@ import (
 	"anoa.com/telkomalumiforum/internal/repository"
 	"anoa.com/telkomalumiforum/pkg/storage"
 	"github.com/golang-jwt/jwt/v5"
+	"github.com/google/uuid"
 	"golang.org/x/crypto/bcrypt"
+	"golang.org/x/oauth2"
+	"golang.org/x/oauth2/google"
 	"gorm.io/gorm"
 )
 
 type AuthService interface {
 	Login(ctx context.Context, input dto.LoginInput) (*dto.AuthResponse, error)
+	GoogleLogin() string
+	GoogleCallback(ctx context.Context, code string) (*dto.AuthResponse, error)
 }
 
 type authService struct {
@@ -29,6 +35,7 @@ type authService struct {
 	tokenTTL     time.Duration
 	defaultRole  string
 	meili        MeiliSearchService
+	googleConfig *oauth2.Config
 }
 
 func NewAuthService(repo repository.UserRepository, imageStorage storage.ImageStorage, meili MeiliSearchService) AuthService {
@@ -49,6 +56,17 @@ func NewAuthService(repo repository.UserRepository, imageStorage storage.ImageSt
 		defaultRole = "siswa"
 	}
 
+	googleConfig := &oauth2.Config{
+		ClientID:     os.Getenv("GOOGLE_CLIENT_ID"),
+		ClientSecret: os.Getenv("GOOGLE_CLIENT_SECRET"),
+		RedirectURL:  os.Getenv("GOOGLE_REDIRECT_URL"),
+		Scopes: []string{
+			"https://www.googleapis.com/auth/userinfo.email",
+			"https://www.googleapis.com/auth/userinfo.profile",
+		},
+		Endpoint: google.Endpoint,
+	}
+
 	return &authService{
 		repo:         repo,
 		imageStorage: imageStorage,
@@ -56,6 +74,7 @@ func NewAuthService(repo repository.UserRepository, imageStorage storage.ImageSt
 		tokenTTL:     ttl,
 		defaultRole:  defaultRole,
 		meili:        meili,
+		googleConfig: googleConfig,
 	}
 }
 
@@ -73,6 +92,102 @@ func (s *authService) Login(ctx context.Context, input dto.LoginInput) (*dto.Aut
 	}
 
 	return s.buildAuthResponse(user)
+}
+
+func (s *authService) GoogleLogin() string {
+	return s.googleConfig.AuthCodeURL("state-token", oauth2.AccessTypeOffline)
+}
+
+func (s *authService) GoogleCallback(ctx context.Context, code string) (*dto.AuthResponse, error) {
+	token, err := s.googleConfig.Exchange(ctx, code)
+	if err != nil {
+		return nil, errors.New("failed to exchange token: " + err.Error())
+	}
+
+	client := s.googleConfig.Client(ctx, token)
+	userInfoResp, err := client.Get("https://www.googleapis.com/oauth2/v2/userinfo")
+	if err != nil {
+		return nil, errors.New("failed to get user info: " + err.Error())
+	}
+	defer userInfoResp.Body.Close()
+
+	var googleUser struct {
+		ID            string `json:"id"`
+		Email         string `json:"email"`
+		VerifiedEmail bool   `json:"verified_email"`
+		Name          string `json:"name"`
+		GivenName     string `json:"given_name"`
+		Picture       string `json:"picture"`
+	}
+
+	if err := json.NewDecoder(userInfoResp.Body).Decode(&googleUser); err != nil {
+		return nil, errors.New("failed to decode user info: " + err.Error())
+	}
+
+	if !strings.HasSuffix(googleUser.Email, "@student.smktelkom-jkt.sch.id") {
+		return nil, errors.New("email domain must be @student.smktelkom-jkt.sch.id")
+	}
+
+	user, err := s.repo.FindByEmail(ctx, googleUser.Email)
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			// Register new user
+			randomPassword := uuid.New().String()
+			hashedPassword, _ := bcrypt.GenerateFromPassword([]byte(randomPassword), bcrypt.DefaultCost)
+
+			role, err := s.repo.FindRoleByName(ctx, s.defaultRole)
+			if err != nil {
+				return nil, errors.New("default role not found")
+			}
+			
+			// Generate username from email (before @)
+			username := strings.Split(googleUser.Email, "@")[0]
+			// Replace spaces with underscores
+			username = strings.ReplaceAll(username, " ", "_")
+			
+			// Check if username exists, if so append random string
+			if _, err := s.repo.FindByUsername(ctx, username); err == nil {
+				username = username + "_" + uuid.New().String()[:4]
+			}
+
+			newUser := &model.User{
+				Username:     username,
+				Email:        googleUser.Email,
+				PasswordHash: string(hashedPassword),
+				RoleID:       &role.ID,
+				Role:         *role,
+				AvatarURL:    &googleUser.Picture,
+				GoogleID:     &googleUser.ID,
+			}
+
+			newProfile := &model.Profile{
+				FullName: googleUser.Name,
+				Bio:      stringPtr("Student at SMK Telkom Jakarta"),
+			}
+
+			if err := s.repo.Create(ctx, newUser, newProfile); err != nil {
+				return nil, errors.New("failed to create user: " + err.Error())
+			}
+			
+			user = newUser
+		} else {
+			return nil, err
+		}
+	} else {
+		// User found, check/update GoogleID
+		if user.GoogleID == nil || *user.GoogleID != googleUser.ID {
+			user.GoogleID = &googleUser.ID
+			if err := s.repo.Update(ctx, user, nil); err != nil {
+				log.Printf("Failed to update GoogleID for user %s: %v", user.Email, err)
+			}
+		}
+	}
+
+	return s.buildAuthResponse(user)
+}
+
+func stringPtr(s string) *string {
+	return &s
 }
 
 func (s *authService) buildAuthResponse(user *model.User) (*dto.AuthResponse, error) {

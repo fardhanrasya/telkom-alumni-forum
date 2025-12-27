@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strings"
 
 	"anoa.com/telkomalumiforum/internal/dto"
 	"anoa.com/telkomalumiforum/internal/model"
@@ -40,18 +41,19 @@ func (s *profileService) UpdateProfile(ctx context.Context, userID string, input
 	}
 
 	if input.Username != nil && *input.Username != "" && *input.Username != user.Username {
-		if len(*input.Username) < 3 {
+		sanitizedUsername := strings.ReplaceAll(*input.Username, " ", "_")
+		if len(sanitizedUsername) < 3 {
 			return nil, errors.New("username minimal 3 karakter")
 		}
-		if len(*input.Username) > 50 {
+		if len(sanitizedUsername) > 50 {
 			return nil, errors.New("username maksimal 50 karakter")
 		}
-		if _, err := s.repo.FindByUsername(ctx, *input.Username); err == nil {
+		if _, err := s.repo.FindByUsername(ctx, sanitizedUsername); err == nil {
 			return nil, errors.New("username already taken")
 		} else if !errors.Is(err, gorm.ErrRecordNotFound) {
 			return nil, err
 		}
-		user.Username = *input.Username
+		user.Username = sanitizedUsername
 	}
 
 	if input.Password != nil && *input.Password != "" {

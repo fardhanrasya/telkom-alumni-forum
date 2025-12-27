@@ -166,6 +166,8 @@ func main() {
 	{
 		auth := api.Group("/auth")
 		auth.POST("/login", authHandler.Login)
+		auth.GET("/google/login", authHandler.GoogleLogin)
+		auth.GET("/google/callback", authHandler.GoogleCallback)
 	}
 
 	authMiddleware := middleware.NewAuthMiddleware(userRepo)
