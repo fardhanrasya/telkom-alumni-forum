@@ -26,7 +26,7 @@ type postService struct {
 	threadRepo          repository.ThreadRepository
 	userRepo            repository.UserRepository
 	attachmentRepo      repository.AttachmentRepository
-	likeService         LikeService
+	reactionService     ReactionService
 	fileStorage         storage.ImageStorage
 	redisClient         *redis.Client
 	notificationService NotificationService
@@ -34,13 +34,13 @@ type postService struct {
 	leaderboardService  LeaderboardService
 }
 
-func NewPostService(postRepo repository.PostRepository, threadRepo repository.ThreadRepository, userRepo repository.UserRepository, attachmentRepo repository.AttachmentRepository, likeService LikeService, fileStorage storage.ImageStorage, redisClient *redis.Client, notificationService NotificationService, meili MeiliSearchService, leaderboardService LeaderboardService) PostService {
+func NewPostService(postRepo repository.PostRepository, threadRepo repository.ThreadRepository, userRepo repository.UserRepository, attachmentRepo repository.AttachmentRepository, reactionService ReactionService, fileStorage storage.ImageStorage, redisClient *redis.Client, notificationService NotificationService, meili MeiliSearchService, leaderboardService LeaderboardService) PostService {
 	return &postService{
 		postRepo:            postRepo,
 		threadRepo:          threadRepo,
 		userRepo:            userRepo,
 		attachmentRepo:      attachmentRepo,
-		likeService:         likeService,
+		reactionService:     reactionService,
 		fileStorage:         fileStorage,
 		redisClient:         redisClient,
 		notificationService: notificationService,
@@ -203,7 +203,7 @@ func (s *postService) CreatePost(ctx context.Context, userID uuid.UUID, req dto.
 		}
 	}
 
-	return s.mapToResponse(post), nil
+	return s.mapToResponse(ctx, post), nil
 }
 
 func (s *postService) GetPostsByThreadID(ctx context.Context, threadID uuid.UUID, filter dto.PostFilter) (*dto.PaginatedPostResponse, error) {
@@ -223,7 +223,7 @@ func (s *postService) GetPostsByThreadID(ctx context.Context, threadID uuid.UUID
 	// 1. Convert all to DTOs and store in map
 	postMap := make(map[uuid.UUID]*dto.PostResponse)
 	for _, p := range allPosts {
-		postMap[p.ID] = s.mapToResponse(p)
+		postMap[p.ID] = s.mapToResponse(ctx, p)
 	}
 
 	// 2. Build Tree
@@ -245,7 +245,7 @@ func (s *postService) GetPostsByThreadID(ctx context.Context, threadID uuid.UUID
 	totalRoots := int64(len(roots))
 	startIndex := (filter.Page - 1) * filter.Limit
 	endIndex := startIndex + filter.Limit
-
+ 
 	if startIndex < 0 {
 		startIndex = 0
 	}
@@ -283,7 +283,7 @@ func (s *postService) GetPostByID(ctx context.Context, postID uuid.UUID) (*dto.P
 	if err != nil {
 		return nil, err
 	}
-	return s.mapToResponse(post), nil
+	return s.mapToResponse(ctx, post), nil
 }
 
 func (s *postService) UpdatePost(ctx context.Context, userID uuid.UUID, postID uuid.UUID, req dto.UpdatePostRequest) (*dto.PostResponse, error) {
@@ -346,7 +346,7 @@ func (s *postService) UpdatePost(ctx context.Context, userID uuid.UUID, postID u
 		_ = s.meili.IndexPost(post)
 	}
 
-	return s.mapToResponse(post), nil
+	return s.mapToResponse(ctx, post), nil
 }
 
 func (s *postService) DeletePost(ctx context.Context, userID uuid.UUID, postID uuid.UUID) error {
@@ -385,7 +385,7 @@ func (s *postService) DeletePost(ctx context.Context, userID uuid.UUID, postID u
 	return nil
 }
 
-func (s *postService) mapToResponse(post *model.Post) *dto.PostResponse {
+func (s *postService) mapToResponse(ctx context.Context, post *model.Post) *dto.PostResponse {
 	var attachments []dto.AttachmentResponse
 	for _, att := range post.Attachments {
 		attachments = append(attachments, dto.AttachmentResponse{
@@ -403,7 +403,22 @@ func (s *postService) mapToResponse(post *model.Post) *dto.PostResponse {
 		authorResponse.AvatarURL = post.User.AvatarURL
 	}
 
-	likesCount, _ := s.likeService.GetPostLikes(context.Background(), post.ID)
+	// Fetch Reaction Data
+	// Try to get user_id from context for "user_reacted" status
+	var userIDPtr *uuid.UUID
+	// Assuming the handler sets a "user_id" string in the context if utilizing Gin.
+	if val := ctx.Value("user_id"); val != nil {
+		if idStr, ok := val.(string); ok {
+			if uid, err := uuid.Parse(idStr); err == nil {
+				userIDPtr = &uid
+			}
+		} else if uid, ok := val.(uuid.UUID); ok {
+			userIDPtr = &uid
+		}
+	}
+
+	reactions, _ := s.reactionService.GetReactions(ctx, userIDPtr, post.ID, "post")
+	likesCount := int64(reactions.Counts["👍"])
 
 	return &dto.PostResponse{
 		ID:          post.ID,
@@ -413,6 +428,7 @@ func (s *postService) mapToResponse(post *model.Post) *dto.PostResponse {
 		Author:      authorResponse,
 		Attachments: attachments,
 		LikesCount:  likesCount,
+		Reactions:   *reactions,
 		CreatedAt:   post.CreatedAt.Format("2006-01-02 15:04:05"),
 		UpdatedAt:   post.UpdatedAt.Format("2006-01-02 15:04:05"),
 	}

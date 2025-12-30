@@ -32,7 +32,7 @@ type threadService struct {
 	categoryRepo       repository.CategoryRepository
 	userRepo           repository.UserRepository
 	attachmentRepo     repository.AttachmentRepository
-	likeService        LikeService
+	reactionService    ReactionService
 	fileStorage        storage.ImageStorage
 	redisClient        *redis.Client
 	viewService        ViewService
@@ -40,7 +40,7 @@ type threadService struct {
 	leaderboardService LeaderboardService
 }
 
-func NewThreadService(threadRepo repository.ThreadRepository, categoryRepo repository.CategoryRepository, userRepo repository.UserRepository, attachmentRepo repository.AttachmentRepository, likeService LikeService, fileStorage storage.ImageStorage, redisClient *redis.Client, meili MeiliSearchService, leaderboardService LeaderboardService) ThreadService {
+func NewThreadService(threadRepo repository.ThreadRepository, categoryRepo repository.CategoryRepository, userRepo repository.UserRepository, attachmentRepo repository.AttachmentRepository, reactionService ReactionService, fileStorage storage.ImageStorage, redisClient *redis.Client, meili MeiliSearchService, leaderboardService LeaderboardService) ThreadService {
 	viewService := NewViewService(redisClient, threadRepo)
 
 	return &threadService{
@@ -48,7 +48,7 @@ func NewThreadService(threadRepo repository.ThreadRepository, categoryRepo repos
 		categoryRepo:       categoryRepo,
 		userRepo:           userRepo,
 		attachmentRepo:     attachmentRepo,
-		likeService:        likeService,
+		reactionService:    reactionService,
 		fileStorage:        fileStorage,
 		redisClient:        redisClient,
 		viewService:        viewService,
@@ -56,6 +56,11 @@ func NewThreadService(threadRepo repository.ThreadRepository, categoryRepo repos
 		leaderboardService: leaderboardService,
 	}
 }
+
+// ... (CreateThread remains unchanged)
+
+
+
 
 func (s *threadService) CreateThread(ctx context.Context, userID uuid.UUID, req dto.CreateThreadRequest) error {
 	// Rate Limiting
@@ -271,7 +276,8 @@ func (s *threadService) GetAllThreads(ctx context.Context, userID uuid.UUID, fil
 			authorResponse.AvatarURL = thread.User.AvatarURL
 		}
 
-		likesCount, _ := s.likeService.GetThreadLikes(ctx, thread.ID)
+		reactions, _ := s.reactionService.GetReactions(ctx, &userID, thread.ID, "thread")
+		likesCount := int64(reactions.Counts["👍"])
 
 		resp := dto.ThreadResponse{
 			ID:           thread.ID,
@@ -284,6 +290,7 @@ func (s *threadService) GetAllThreads(ctx context.Context, userID uuid.UUID, fil
 			Author:       authorResponse,
 			Attachments:  attachments,
 			LikesCount:   likesCount,
+			Reactions:    *reactions,
 			CreatedAt:    thread.CreatedAt.Format("2006-01-02 15:04:05"),
 		}
 		threadResponses = append(threadResponses, resp)
@@ -341,7 +348,8 @@ func (s *threadService) GetMyThreads(ctx context.Context, userID uuid.UUID, page
 			authorResponse.AvatarURL = thread.User.AvatarURL
 		}
 
-		likesCount, _ := s.likeService.GetThreadLikes(ctx, thread.ID)
+		reactions, _ := s.reactionService.GetReactions(ctx, &userID, thread.ID, "thread")
+		likesCount := int64(reactions.Counts["👍"])
 
 		resp := dto.ThreadResponse{
 			ID:           thread.ID,
@@ -354,6 +362,7 @@ func (s *threadService) GetMyThreads(ctx context.Context, userID uuid.UUID, page
 			Author:       authorResponse,
 			Attachments:  attachments,
 			LikesCount:   likesCount,
+			Reactions:    *reactions,
 			CreatedAt:    thread.CreatedAt.Format("2006-01-02 15:04:05"),
 		}
 		threadResponses = append(threadResponses, resp)
@@ -433,7 +442,8 @@ func (s *threadService) GetThreadsByUsername(ctx context.Context, currentUserID 
 			authorResponse.AvatarURL = thread.User.AvatarURL
 		}
 
-		likesCount, _ := s.likeService.GetThreadLikes(ctx, thread.ID)
+		reactions, _ := s.reactionService.GetReactions(ctx, &currentUserID, thread.ID, "thread")
+		likesCount := int64(reactions.Counts["👍"])
 
 		resp := dto.ThreadResponse{
 			ID:           thread.ID,
@@ -446,6 +456,7 @@ func (s *threadService) GetThreadsByUsername(ctx context.Context, currentUserID 
 			Author:       authorResponse,
 			Attachments:  attachments,
 			LikesCount:   likesCount,
+			Reactions:    *reactions,
 			CreatedAt:    thread.CreatedAt.Format("2006-01-02 15:04:05"),
 		}
 		threadResponses = append(threadResponses, resp)
@@ -490,7 +501,8 @@ func (s *threadService) GetThreadBySlug(ctx context.Context, slug string) (*dto.
 		authorResponse.AvatarURL = thread.User.AvatarURL
 	}
 
-	likesCount, _ := s.likeService.GetThreadLikes(ctx, thread.ID)
+	reactions, _ := s.reactionService.GetReactions(ctx, nil, thread.ID, "thread")
+	likesCount := int64(reactions.Counts["👍"])
 
 	return &dto.ThreadResponse{
 		ID:           thread.ID,
@@ -503,6 +515,7 @@ func (s *threadService) GetThreadBySlug(ctx context.Context, slug string) (*dto.
 		Author:       authorResponse,
 		Attachments:  attachments,
 		LikesCount:   likesCount,
+		Reactions:    *reactions,
 		CreatedAt:    thread.CreatedAt.Format("2006-01-02 15:04:05"),
 	}, nil
 }

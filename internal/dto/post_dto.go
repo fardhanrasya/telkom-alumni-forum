@@ -21,9 +21,11 @@ type PostResponse struct {
 	Content     string               `json:"content"`
 	Author      AuthorResponse       `json:"author"`
 	Attachments []AttachmentResponse `json:"attachments,omitempty"`
-	LikesCount  int64                `json:"likes_count"`
+	LikesCount  int64                `json:"likes_count"` // Deprecated
+	Reactions   ReactionsResponse    `json:"reactions"`
 	Replies     []*PostResponse      `json:"replies,omitempty"`
 	CreatedAt   string               `json:"created_at"`
+
 	UpdatedAt   string               `json:"updated_at"`
 }
 

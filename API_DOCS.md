@@ -381,7 +381,14 @@ Authorization: Bearer <user_token>
         "avatar_url": "https://..."
       },
       "attachments": [],
-      "likes_count": 5,
+      "reactions": {
+        "counts": {
+          "🔥": 10,
+          "👍": 5,
+          "🤡": 2
+        },
+        "user_reacted": ["🔥"] // List of emojis the CURRENT user has selected
+      },
       "created_at": "2024-01-01 10:00:00"
     }
   ],
@@ -431,7 +438,14 @@ Authorization: Bearer <user_token>
         "avatar_url": "https://..."
       },
       "attachments": [],
-      "likes_count": 5,
+      "reactions": {
+        "counts": {
+          "🔥": 10,
+          "👍": 5,
+          "🤡": 2
+        },
+        "user_reacted": ["🔥"] // List of emojis the CURRENT user has selected
+      },
       "created_at": "2024-01-01 10:00:00"
     }
   ],
@@ -834,7 +848,14 @@ Authorization: Bearer <user_token>
         "avatar_url": "https://..."
       },
       "attachments": [],
-      "likes_count": 2,
+      "reactions": {
+        "counts": {
+          "🔥": 10,
+          "👍": 5,
+          "🤡": 2
+        },
+        "user_reacted": ["🔥"] // List of emojis the CURRENT user has selected
+      },
       "replies": [
           {
              "id": "uuid-child",
@@ -885,7 +906,14 @@ Authorization: Bearer <user_token>
   "content": "Content...",
   "author": "username",
   "attachments": [],
-  "likes_count": 5,
+  "reactions": {
+        "counts": {
+          "🔥": 10,
+          "👍": 5,
+          "🤡": 2
+        },
+        "user_reacted": ["🔥"] // List of emojis the CURRENT user has selected
+      },
   "created_at": "...",
   "updated_at": "..."
 }
@@ -902,43 +930,6 @@ Mengedit post. Hanya pemilik post yang bisa mengedit. Bisa juga mengupdate attac
 **Response (200):** Updated Post object.
 
 **Response (403):** "unauthorized: you can only update your own post"
-
-### 19. ✅ POST /api/threads/:id/like (Authenticated User)
-
-Like sebuah thread. Menggunakan Redis queue untuk processing.
-
-**Response (200):**
-```json
-{ "message": "thread liked" }
-```
-**Response (400):** "already liked"
-
-### 20. ✅ DELETE /api/threads/:id/like (Authenticated User)
-
-Unlike sebuah thread.
-
-**Response (200):**
-```json
-{ "message": "thread unliked" }
-```
-
-### 21. ✅ POST /api/posts/:id/like (Authenticated User)
-
-Like sebuah post.
-
-**Response (200):**
-```json
-{ "message": "post liked" }
-```
-
-### 22. ✅ DELETE /api/posts/:id/like (Authenticated User)
-
-Unlike sebuah post.
-
-**Response (200):**
-```json
-{ "message": "post unliked" }
-```
 
 ### 26. ✅ DELETE /api/posts/:id (Authenticated User)
 
@@ -977,7 +968,14 @@ Authorization: Bearer <user_token>
   "content": "Isi content...",
   "audience": "semua",
   "views": 101,
-  "likes_count": 10,
+  "reactions": {
+        "counts": {
+          "🔥": 10,
+          "👍": 5,
+          "🤡": 2
+        },
+        "user_reacted": ["🔥"] // List of emojis the CURRENT user has selected
+      },
   "author": "johndoe",
   "attachments": [],
   "created_at": "2024-01-01 10:00:00"
@@ -989,30 +987,6 @@ Authorization: Bearer <user_token>
 ```json
 {
   "thread not found": "record not found"
-}
-```
-
-### 24. ✅ GET /api/threads/:id/like (Authenticated User)
-
-Mengecek apakah user yang sedang login sudah me-like thread tertentu.
-
-**Response (200):**
-
-```json
-{
-  "liked": true
-}
-```
-
-### 25. ✅ GET /api/posts/:id/like (Authenticated User)
-
-Mengecek apakah user yang sedang login sudah me-like post tertentu.
-
-**Response (200):**
-
-```json
-{
-  "liked": false
 }
 ```
 
@@ -1150,7 +1124,14 @@ Mendapatkan daftar thread yang sedang trending (populer hari ini). Menggunakan a
       "content": "Isi content...",
       "audience": "semua",
       "views": 500,
-      "likes_count": 50,
+      "reactions": {
+        "counts": {
+          "🔥": 10,
+          "👍": 5,
+          "🤡": 2
+        },
+        "user_reacted": ["🔥"] // List of emojis the CURRENT user has selected
+      },
       "author": {
         "username": "johndoe",
         "avatar_url": "https://..."
@@ -1227,6 +1208,14 @@ Authorization: Bearer <user_token>
     {
       "id": "uuid...",
       "content": "Ini pesan rahasia...",
+      "reactions": {
+        "counts": {
+          "🔥": 10,
+          "👍": 5,
+          "🤡": 2
+        },
+        "user_reacted": ["🔥"] // List of emojis the CURRENT user has selected
+      },
       "created_at": "2024-01-01 12:05:00"
     }
   ],
@@ -1241,6 +1230,26 @@ Authorization: Bearer <user_token>
 ```json
 {
   "error": "guru cannot view menfess"
+}
+```
+
+### 35. ✅ POST /api/reactions (Authenticated User)
+
+Mengirim emoji reaction ke thread, post, atau menfess.
+
+**Headers:**
+
+```
+Authorization: Bearer <user_token>
+Content-Type: application/json
+```
+
+**Body:**
+```json
+{
+  "reference_id": "thread-123-uuid",
+  "reference_type": "thread", // or 'post', 'menfess'
+  "emoji": "🔥"
 }
 ```
 

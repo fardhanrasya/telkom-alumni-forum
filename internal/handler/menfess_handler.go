@@ -69,10 +69,16 @@ func (h *MenfessHandler) GetMenfesses(c *gin.Context) {
 		return
 	}
 
+	userID, err := uuid.Parse(userIDStr.(string))
+	if err != nil {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "invalid user id"})
+		return
+	}
+
 	// TODO: Performance Improvement
 	// Saat ini kita query DB untuk cek role. Untuk skala besar,
 	// sebaiknya role disimpan di JWT Claims context untuk menghindari DB call
-	user, err := h.userRepo.FindByID(c.Request.Context(), userIDStr.(string))
+	user, err := h.userRepo.FindByID(c.Request.Context(), userID.String())
 	if err != nil {
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "user not found"})
 		return
@@ -86,7 +92,7 @@ func (h *MenfessHandler) GetMenfesses(c *gin.Context) {
 	limit, _ := strconv.Atoi(c.DefaultQuery("limit", "10"))
 	offset := (page - 1) * limit
 
-	menfesses, total, err := h.service.GetMenfesses(c.Request.Context(), offset, limit)
+	menfesses, total, err := h.service.GetMenfesses(c.Request.Context(), &userID, offset, limit)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
@@ -99,3 +105,4 @@ func (h *MenfessHandler) GetMenfesses(c *gin.Context) {
 		"limit": limit,
 	})
 }
+

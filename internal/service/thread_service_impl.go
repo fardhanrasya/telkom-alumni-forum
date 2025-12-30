@@ -40,7 +40,8 @@ func (s *threadService) GetTrendingThreads(ctx context.Context, limit int) ([]dt
 		// A better approach would be to include likes count in the GetTrending repo query result,
 		// but that requires changing the Thread model or returning a different struct.
 		// Since we want standard ThreadResponse, let's keep it simple.
-		likesCount, _ := s.likeService.GetThreadLikes(ctx, thread.ID)
+		reactions, _ := s.reactionService.GetReactions(ctx, nil, thread.ID, "thread")
+		likesCount := int64(reactions.Counts["👍"])
 
 		resp := dto.ThreadResponse{
 			ID:           thread.ID,
@@ -53,8 +54,10 @@ func (s *threadService) GetTrendingThreads(ctx context.Context, limit int) ([]dt
 			Author:       authorResponse,
 			Attachments:  attachments,
 			LikesCount:   likesCount,
+			Reactions:    *reactions,
 			CreatedAt:    thread.CreatedAt.Format("2006-01-02 15:04:05"),
 		}
+
 		threadResponses = append(threadResponses, resp)
 	}
 

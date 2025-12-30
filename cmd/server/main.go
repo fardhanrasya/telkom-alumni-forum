@@ -9,6 +9,7 @@ import (
 
 	"anoa.com/telkomalumiforum/internal/agent"
 	"anoa.com/telkomalumiforum/internal/handler"
+
 	"anoa.com/telkomalumiforum/internal/middleware"
 	"anoa.com/telkomalumiforum/internal/model"
 	"anoa.com/telkomalumiforum/internal/repository"
@@ -100,14 +101,17 @@ func main() {
 	threadRepo := repository.NewThreadRepository(db)
 	postRepo := repository.NewPostRepository(db)
 
-	likeRepo := repository.NewLikeRepository(db)
 	leaderboardService := service.NewLeaderboardService(leaderboardRepo, userRepo, notificationService)
 	leaderboardHandler := handler.NewLeaderboardHandler(leaderboardService)
 
-	likeService := service.NewLikeService(redisClient, likeRepo, threadRepo, postRepo, notificationService, leaderboardService)
-	likeHandler := handler.NewLikeHandler(likeService)
+	reactionRepo := repository.NewReactionRepository(db)
+	reactionService := service.NewReactionService(reactionRepo, redisClient, leaderboardService, notificationService, threadRepo, postRepo)
+	reactionHandler := handler.NewReactionHandler(reactionService)
 
-	threadService := service.NewThreadService(threadRepo, categoryRepo, userRepo, attachmentRepo, likeService, imageStorage, redisClient, meiliService, leaderboardService)
+
+
+
+	threadService := service.NewThreadService(threadRepo, categoryRepo, userRepo, attachmentRepo, reactionService, imageStorage, redisClient, meiliService, leaderboardService)
 	threadHandler := handler.NewThreadHandler(threadService)
 
 	viewService := service.NewViewService(redisClient, threadRepo)
@@ -115,20 +119,18 @@ func main() {
 		go viewService.StartViewSyncWorker(context.Background())
 	}
 
-	postService := service.NewPostService(postRepo, threadRepo, userRepo, attachmentRepo, likeService, imageStorage, redisClient, notificationService, meiliService, leaderboardService)
+	postService := service.NewPostService(postRepo, threadRepo, userRepo, attachmentRepo, reactionService, imageStorage, redisClient, notificationService, meiliService, leaderboardService)
 	postHandler := handler.NewPostHandler(postService)
-
-	// Start Like Worker
-	if redisClient != nil {
-		go likeService.StartWorker(context.Background())
-	}
 
 	statService := service.NewStatService(userRepo)
 	statHandler := handler.NewStatHandler(statService, threadService)
 
 	menfessRepo := repository.NewMenfessRepository(db)
-	menfessService := service.NewMenfessService(menfessRepo, redisClient)
+	menfessService := service.NewMenfessService(menfessRepo, reactionService, redisClient)
 	menfessHandler := handler.NewMenfessHandler(menfessService, userRepo)
+
+
+	// ... (Other initializations remain)
 
 	// Start AI Agent
 	if redisClient != nil {
@@ -137,6 +139,7 @@ func main() {
 	}
 
 	router := gin.New()
+
 	router.Use(gin.Recovery())
 	router.Use(gin.LoggerWithConfig(gin.LoggerConfig{
 		SkipPaths: []string{"/api/menfess"},
@@ -175,6 +178,9 @@ func main() {
 	// Protected routes (perlu auth)
 	api.Use(authMiddleware.RequireAuth())
 	{
+		api.POST("/reactions", reactionHandler.ToggleReaction)
+		api.GET("/reactions/:refType/:refID", reactionHandler.GetReactions)
+
 		admin := api.Group("/admin")
 		admin.Use(authMiddleware.RequireAdmin())
 		{
@@ -205,12 +211,7 @@ func main() {
 		api.PUT("/posts/:post_id", postHandler.UpdatePost)
 		api.DELETE("/posts/:post_id", postHandler.DeletePost)
 
-		api.POST("/threads/:thread_id/like", likeHandler.LikeThread)
-		api.GET("/threads/:thread_id/like", likeHandler.CheckThreadLike)
-		api.DELETE("/threads/:thread_id/like", likeHandler.UnlikeThread)
-		api.POST("/posts/:post_id/like", likeHandler.LikePost)
-		api.GET("/posts/:post_id/like", likeHandler.CheckPostLike)
-		api.DELETE("/posts/:post_id/like", likeHandler.UnlikePost)
+
 
 		profile := api.Group("/profile")
 		{
@@ -274,14 +275,13 @@ func migrate(db *gorm.DB) error {
 		&model.Thread{},
 		&model.Post{},
 		&model.Attachment{},
-		&model.ThreadLike{},
-		&model.ThreadLike{},
-		&model.PostLike{},
 		&model.Notification{},
 		&model.Menfess{},
 		&model.PointLog{},
 		&model.UserStats{},
+		&model.Reaction{},
 	)
+
 }
 
 func seedRoles(db *gorm.DB) error {

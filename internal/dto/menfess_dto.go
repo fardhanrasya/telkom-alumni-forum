@@ -8,6 +8,8 @@ type CreateMenfessRequest struct {
 
 type MenfessResponse struct {
 	ID        string    `json:"id"`
-	Content   string    `json:"content"`
-	CreatedAt time.Time `json:"created_at"`
+	Content   string            `json:"content"`
+	Reactions ReactionsResponse `json:"reactions"`
+	CreatedAt time.Time         `json:"created_at"`
+
 }

@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"time"
 
+	"anoa.com/telkomalumiforum/internal/dto"
 	"anoa.com/telkomalumiforum/internal/model"
 	"anoa.com/telkomalumiforum/internal/repository"
 	"github.com/google/uuid"
@@ -16,18 +17,20 @@ import (
 
 type MenfessService interface {
 	CreateMenfess(ctx context.Context, userID uuid.UUID, content string) error
-	GetMenfesses(ctx context.Context, offset, limit int) ([]*model.Menfess, int64, error)
+	GetMenfesses(ctx context.Context, userID *uuid.UUID, offset, limit int) ([]dto.MenfessResponse, int64, error)
 }
 
 type menfessService struct {
-	repo        repository.MenfessRepository
-	redisClient *redis.Client
+	repo            repository.MenfessRepository
+	reactionService ReactionService
+	redisClient     *redis.Client
 }
 
-func NewMenfessService(repo repository.MenfessRepository, redisClient *redis.Client) MenfessService {
+func NewMenfessService(repo repository.MenfessRepository, reactionService ReactionService, redisClient *redis.Client) MenfessService {
 	return &menfessService{
-		repo:        repo,
-		redisClient: redisClient,
+		repo:            repo,
+		reactionService: reactionService,
+		redisClient:     redisClient,
 	}
 }
 
@@ -95,6 +98,23 @@ func (s *menfessService) CreateMenfess(ctx context.Context, userID uuid.UUID, co
 	return s.repo.Create(ctx, menfess)
 }
 
-func (s *menfessService) GetMenfesses(ctx context.Context, offset, limit int) ([]*model.Menfess, int64, error) {
-	return s.repo.FindAll(ctx, offset, limit)
+func (s *menfessService) GetMenfesses(ctx context.Context, userID *uuid.UUID, offset, limit int) ([]dto.MenfessResponse, int64, error) {
+	menfesses, total, err := s.repo.FindAll(ctx, offset, limit)
+	if err != nil {
+		return nil, 0, err
+	}
+
+	var responses []dto.MenfessResponse
+	for _, m := range menfesses {
+		reactions, _ := s.reactionService.GetReactions(ctx, userID, m.ID, "menfess")
+
+		responses = append(responses, dto.MenfessResponse{
+			ID:        m.ID.String(),
+			Content:   m.Content,
+			Reactions: *reactions,
+			CreatedAt: m.CreatedAt,
+		})
+	}
+
+	return responses, total, nil
 }
