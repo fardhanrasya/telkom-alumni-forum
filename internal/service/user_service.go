@@ -241,17 +241,3 @@ func (s *authService) generateToken(user *model.User) (string, int64, error) {
 
 	return signed, expiresAt.Unix(), nil
 }
-
-func normalizeOptional(value *string) *string {
-	if value == nil {
-		return nil
-	}
-
-	trimmed := strings.TrimSpace(*value)
-	if trimmed == "" {
-		return nil
-	}
-
-	result := trimmed
-	return &result
-}
