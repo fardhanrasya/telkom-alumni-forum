@@ -47,15 +47,6 @@ func (a *Agent) Start() {
 	}
 	a.cron.Start()
 	log.Println("🤖 Agent started with schedule: 0 7,19 * * *")
-
-	// Immediate run for testing
-	go func() {
-		log.Println("🚀 Triggering immediate agent run for testing...")
-		time.Sleep(10 * time.Second) // Wait for other services to initialize
-		if err := a.RunJob(); err != nil {
-			log.Printf("❌ Immediate agent job failed: %v", err)
-		}
-	}()
 }
 
 func (a *Agent) RunJob() error {
