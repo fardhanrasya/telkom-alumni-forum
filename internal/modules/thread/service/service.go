@@ -26,7 +26,7 @@ type Service interface {
 	CreateThread(ctx context.Context, userID uuid.UUID, req threadDto.CreateThreadRequest) error
 	GetAllThreads(ctx context.Context, userID uuid.UUID, filter commonDto.ThreadFilter) (*commonDto.PaginatedThreadResponse, error)
 	GetMyThreads(ctx context.Context, userID uuid.UUID, page, limit int) (*commonDto.PaginatedThreadResponse, error)
-	GetThreadBySlug(ctx context.Context, slug string) (*commonDto.ThreadResponse, error)
+	GetThreadBySlug(ctx context.Context, userID uuid.UUID, slug string) (*commonDto.ThreadResponse, error)
 	DeleteThread(ctx context.Context, userID uuid.UUID, threadID uuid.UUID) error
 	UpdateThread(ctx context.Context, userID uuid.UUID, threadID uuid.UUID, req threadDto.UpdateThreadRequest) error
 	IncrementView(ctx context.Context, threadID uuid.UUID, userID uuid.UUID) error
@@ -315,13 +315,13 @@ func (s *service) GetThreadsByUsername(ctx context.Context, currentUserID uuid.U
 	}, nil
 }
 
-func (s *service) GetThreadBySlug(ctx context.Context, slug string) (*commonDto.ThreadResponse, error) {
+func (s *service) GetThreadBySlug(ctx context.Context, userID uuid.UUID, slug string) (*commonDto.ThreadResponse, error) {
 	thread, err := s.threadRepo.FindBySlug(ctx, slug)
 	if err != nil {
 		return nil, fmt.Errorf("thread not found: %w", apperror.ErrNotFound)
 	}
 
-	resp := s.buildThreadResponse(ctx, *thread, nil)
+	resp := s.buildThreadResponse(ctx, *thread, &userID)
 	return &resp, nil
 }
 

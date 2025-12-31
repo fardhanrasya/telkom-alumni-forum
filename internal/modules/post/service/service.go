@@ -24,8 +24,8 @@ import (
 
 type PostService interface {
 	CreatePost(ctx context.Context, userID uuid.UUID, req postDto.CreatePostRequest) (*postDto.PostResponse, error)
-	GetPostsByThreadID(ctx context.Context, threadID uuid.UUID, filter postDto.PostFilter) (*postDto.PaginatedPostResponse, error)
-	GetPostByID(ctx context.Context, postID uuid.UUID) (*postDto.PostResponse, error)
+	GetPostsByThreadID(ctx context.Context, threadID uuid.UUID, userID *uuid.UUID, filter postDto.PostFilter) (*postDto.PaginatedPostResponse, error)
+	GetPostByID(ctx context.Context, postID uuid.UUID, userID *uuid.UUID) (*postDto.PostResponse, error)
 	UpdatePost(ctx context.Context, userID uuid.UUID, postID uuid.UUID, req postDto.UpdatePostRequest) (*postDto.PostResponse, error)
 	DeletePost(ctx context.Context, userID uuid.UUID, postID uuid.UUID) error
 }
@@ -212,10 +212,10 @@ func (s *postService) CreatePost(ctx context.Context, userID uuid.UUID, req post
 		}
 	}
 
-	return s.mapToResponse(ctx, post), nil
+	return s.mapToResponse(ctx, post, &userID), nil
 }
 
-func (s *postService) GetPostsByThreadID(ctx context.Context, threadID uuid.UUID, filter postDto.PostFilter) (*postDto.PaginatedPostResponse, error) {
+func (s *postService) GetPostsByThreadID(ctx context.Context, threadID uuid.UUID, userID *uuid.UUID, filter postDto.PostFilter) (*postDto.PaginatedPostResponse, error) {
 	if filter.Page == 0 {
 		filter.Page = 1
 	}
@@ -232,7 +232,7 @@ func (s *postService) GetPostsByThreadID(ctx context.Context, threadID uuid.UUID
 	// 1. Convert all to DTOs and store in map
 	postMap := make(map[uuid.UUID]*postDto.PostResponse)
 	for _, p := range allPosts {
-		postMap[p.ID] = s.mapToResponse(ctx, p)
+		postMap[p.ID] = s.mapToResponse(ctx, p, userID)
 	}
 
 	// 2. Build Tree
@@ -287,12 +287,12 @@ func (s *postService) GetPostsByThreadID(ctx context.Context, threadID uuid.UUID
 	}, nil
 }
 
-func (s *postService) GetPostByID(ctx context.Context, postID uuid.UUID) (*postDto.PostResponse, error) {
+func (s *postService) GetPostByID(ctx context.Context, postID uuid.UUID, userID *uuid.UUID) (*postDto.PostResponse, error) {
 	post, err := s.postRepo.FindByID(ctx, postID)
 	if err != nil {
 		return nil, err
 	}
-	return s.mapToResponse(ctx, post), nil
+	return s.mapToResponse(ctx, post, userID), nil
 }
 
 func (s *postService) UpdatePost(ctx context.Context, userID uuid.UUID, postID uuid.UUID, req postDto.UpdatePostRequest) (*postDto.PostResponse, error) {
@@ -355,7 +355,7 @@ func (s *postService) UpdatePost(ctx context.Context, userID uuid.UUID, postID u
 		_ = s.meili.IndexPost(post)
 	}
 
-	return s.mapToResponse(ctx, post), nil
+	return s.mapToResponse(ctx, post, &userID), nil
 }
 
 func (s *postService) DeletePost(ctx context.Context, userID uuid.UUID, postID uuid.UUID) error {

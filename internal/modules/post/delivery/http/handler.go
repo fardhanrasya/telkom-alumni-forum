@@ -73,7 +73,16 @@ func (h *PostHandler) GetPostsByThreadID(c *gin.Context) {
 		return
 	}
 
-	posts, err := h.service.GetPostsByThreadID(c.Request.Context(), threadID, filter)
+	var userIDPtr *uuid.UUID
+	if userIDStr, exists := c.Get("user_id"); exists {
+		if idStr, ok := userIDStr.(string); ok {
+			if uid, err := uuid.Parse(idStr); err == nil {
+				userIDPtr = &uid
+			}
+		}
+	}
+
+	posts, err := h.service.GetPostsByThreadID(c.Request.Context(), threadID, userIDPtr, filter)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
@@ -152,7 +161,16 @@ func (h *PostHandler) GetPostByID(c *gin.Context) {
 		return
 	}
 
-	post, err := h.service.GetPostByID(c.Request.Context(), postID)
+	var userIDPtr *uuid.UUID
+	if userIDStr, exists := c.Get("user_id"); exists {
+		if idStr, ok := userIDStr.(string); ok {
+			if uid, err := uuid.Parse(idStr); err == nil {
+				userIDPtr = &uid
+			}
+		}
+	}
+
+	post, err := h.service.GetPostByID(c.Request.Context(), postID, userIDPtr)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return

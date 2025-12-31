@@ -170,7 +170,7 @@ func (h *ThreadHandler) GetThreadBySlug(c *gin.Context) {
 	}
 
 	// Get thread first
-	thread, err := h.service.GetThreadBySlug(c.Request.Context(), slug)
+	thread, err := h.service.GetThreadBySlug(c.Request.Context(), userID, slug)
 	if err != nil {
 		response.ResponseError(c, err)
 		return
