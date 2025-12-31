@@ -3,30 +3,30 @@ package bootstrap
 import (
 	"log"
 
-	"anoa.com/telkomalumiforum/internal/model"
+	"anoa.com/telkomalumiforum/internal/entity"
 	"golang.org/x/crypto/bcrypt"
 	"gorm.io/gorm"
 )
 
 func Migrate(db *gorm.DB) error {
 	return db.AutoMigrate(
-		&model.Role{},
-		&model.User{},
-		&model.Profile{},
-		&model.Category{},
-		&model.Thread{},
-		&model.Post{},
-		&model.Attachment{},
-		&model.Notification{},
-		&model.Menfess{},
-		&model.PointLog{},
-		&model.UserStats{},
-		&model.Reaction{},
+		&entity.Role{},
+		&entity.User{},
+		&entity.Profile{},
+		&entity.Category{},
+		&entity.Thread{},
+		&entity.Post{},
+		&entity.Attachment{},
+		&entity.Notification{},
+		&entity.Menfess{},
+		&entity.PointLog{},
+		&entity.UserStats{},
+		&entity.Reaction{},
 	)
 }
 
 func SeedRoles(db *gorm.DB) error {
-	defaultRoles := []model.Role{
+	defaultRoles := []entity.Role{
 		{Name: "admin", Description: "Super administrator"},
 		{Name: "guru", Description: "Guru"},
 		{Name: "siswa", Description: "Siswa"},
@@ -34,7 +34,7 @@ func SeedRoles(db *gorm.DB) error {
 
 	for _, role := range defaultRoles {
 		var count int64
-		if err := db.Model(&model.Role{}).
+		if err := db.Model(&entity.Role{}).
 			Where("name = ?", role.Name).
 			Count(&count).Error; err != nil {
 			return err
@@ -51,13 +51,13 @@ func SeedRoles(db *gorm.DB) error {
 }
 
 func SeedAdminUser(db *gorm.DB) error {
-	var adminRole model.Role
+	var adminRole entity.Role
 	if err := db.Where("name = ?", "admin").First(&adminRole).Error; err != nil {
 		return err
 	}
 
 	var count int64
-	if err := db.Model(&model.User{}).
+	if err := db.Model(&entity.User{}).
 		Where("email = ?", "admin@telkom.com").
 		Count(&count).Error; err != nil {
 		return err
@@ -74,7 +74,7 @@ func SeedAdminUser(db *gorm.DB) error {
 		return err
 	}
 
-	adminUser := model.User{
+	adminUser := entity.User{
 		Username:     "admin",
 		Email:        "admin@telkom.com",
 		PasswordHash: string(hashedPasswordBytes),
@@ -85,7 +85,7 @@ func SeedAdminUser(db *gorm.DB) error {
 		return err
 	}
 
-	adminProfile := model.Profile{
+	adminProfile := entity.Profile{
 		UserID:   adminUser.ID,
 		FullName: "Administrator",
 		Bio:      stringPtr("System Administrator"),
@@ -103,13 +103,13 @@ func SeedAdminUser(db *gorm.DB) error {
 }
 
 func SeedBotUser(db *gorm.DB) error {
-	var siswaRole model.Role
+	var siswaRole entity.Role
 	if err := db.Where("name = ?", "siswa").First(&siswaRole).Error; err != nil {
 		return err
 	}
 
 	var count int64
-	if err := db.Model(&model.User{}).
+	if err := db.Model(&entity.User{}).
 		Where("username = ?", "Mading_Bot").
 		Count(&count).Error; err != nil {
 		return err
@@ -125,7 +125,7 @@ func SeedBotUser(db *gorm.DB) error {
 		return err
 	}
 
-	botUser := model.User{
+	botUser := entity.User{
 		Username:     "Mading_Bot",
 		Email:        "bot@telkom.com",
 		PasswordHash: string(hashedPasswordBytes),
@@ -137,7 +137,7 @@ func SeedBotUser(db *gorm.DB) error {
 		return err
 	}
 
-	botProfile := model.Profile{
+	botProfile := entity.Profile{
 		UserID:   botUser.ID,
 		FullName: "Mading Bot",
 		Bio:      stringPtr("🤖 Bot Mading Sekolah - Memberikan informasi terkini seputar teknologi dan berita sekolah."),

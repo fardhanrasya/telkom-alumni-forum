@@ -6,9 +6,10 @@ import (
 	"log"
 	"time"
 
-	"anoa.com/telkomalumiforum/internal/dto"
-	"anoa.com/telkomalumiforum/internal/repository"
-	"anoa.com/telkomalumiforum/internal/service"
+	categoryRepo "anoa.com/telkomalumiforum/internal/modules/category/repository"
+	threadDto "anoa.com/telkomalumiforum/internal/modules/thread/dto"
+	thread "anoa.com/telkomalumiforum/internal/modules/thread/service"
+	userRepo "anoa.com/telkomalumiforum/internal/modules/user/repository"
 	"github.com/google/uuid"
 	"github.com/redis/go-redis/v9"
 	"github.com/robfig/cron/v3"
@@ -16,13 +17,13 @@ import (
 
 type Agent struct {
 	cron          *cron.Cron
-	threadService service.ThreadService
-	userRepo      repository.UserRepository
-	categoryRepo  repository.CategoryRepository
+	threadService thread.Service
+	userRepo      userRepo.UserRepository
+	categoryRepo  categoryRepo.CategoryRepository
 	redis         *redis.Client
 }
 
-func NewAgent(threadService service.ThreadService, userRepo repository.UserRepository, categoryRepo repository.CategoryRepository, redis *redis.Client) *Agent {
+func NewAgent(threadService thread.Service, userRepo userRepo.UserRepository, categoryRepo categoryRepo.CategoryRepository, redis *redis.Client) *Agent {
 	// Initialize cron with seconds precision if needed, but standard minute precision is fine.
 	// Standard cron is minute-based.
 	return &Agent{
@@ -126,7 +127,7 @@ func (a *Agent) RunJob() error {
 			newContent += fmt.Sprintf("\n\n---\nSumber: [%s](%s)", item.Title, item.Link)
 
 			// Post
-			req := dto.CreateThreadRequest{
+			req := threadDto.CreateThreadRequest{
 				Title:      newTitle,
 				Content:    newContent,
 				CategoryID: targetCategoryID.String(),

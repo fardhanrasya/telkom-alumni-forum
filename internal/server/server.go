@@ -8,11 +8,58 @@ import (
 	"time"
 
 	"anoa.com/telkomalumiforum/internal/agent"
-	"anoa.com/telkomalumiforum/internal/handler"
 	"anoa.com/telkomalumiforum/internal/middleware"
-	"anoa.com/telkomalumiforum/internal/repository"
-	"anoa.com/telkomalumiforum/internal/service"
 	"anoa.com/telkomalumiforum/pkg/storage"
+
+	adminHttp "anoa.com/telkomalumiforum/internal/modules/admin/delivery/http"
+	adminService "anoa.com/telkomalumiforum/internal/modules/admin/service"
+
+	attachmentHttp "anoa.com/telkomalumiforum/internal/modules/attachment/delivery/http"
+	attachmentRepo "anoa.com/telkomalumiforum/internal/modules/attachment/repository"
+	attachmentService "anoa.com/telkomalumiforum/internal/modules/attachment/service"
+
+	categoryHttp "anoa.com/telkomalumiforum/internal/modules/category/delivery/http"
+	categoryRepo "anoa.com/telkomalumiforum/internal/modules/category/repository"
+	categoryService "anoa.com/telkomalumiforum/internal/modules/category/service"
+
+	leaderboardHttp "anoa.com/telkomalumiforum/internal/modules/leaderboard/delivery/http"
+	leaderboardRepo "anoa.com/telkomalumiforum/internal/modules/leaderboard/repository"
+	leaderboardService "anoa.com/telkomalumiforum/internal/modules/leaderboard/service"
+
+	menfessHttp "anoa.com/telkomalumiforum/internal/modules/menfess/delivery/http"
+	menfessRepo "anoa.com/telkomalumiforum/internal/modules/menfess/repository"
+	menfessService "anoa.com/telkomalumiforum/internal/modules/menfess/service"
+
+	notiHttp "anoa.com/telkomalumiforum/internal/modules/notification/delivery/http"
+	notifRepo "anoa.com/telkomalumiforum/internal/modules/notification/repository"
+	notifService "anoa.com/telkomalumiforum/internal/modules/notification/service"
+
+	postHttp "anoa.com/telkomalumiforum/internal/modules/post/delivery/http"
+	postRepo "anoa.com/telkomalumiforum/internal/modules/post/repository"
+	postService "anoa.com/telkomalumiforum/internal/modules/post/service"
+
+	profileHttp "anoa.com/telkomalumiforum/internal/modules/profile/delivery/http"
+	profileService "anoa.com/telkomalumiforum/internal/modules/profile/service"
+
+	reactionHttp "anoa.com/telkomalumiforum/internal/modules/reaction/delivery/http"
+	reactionRepo "anoa.com/telkomalumiforum/internal/modules/reaction/repository"
+	reactionService "anoa.com/telkomalumiforum/internal/modules/reaction/service"
+
+	searchService "anoa.com/telkomalumiforum/internal/modules/search/service"
+
+	statHttp "anoa.com/telkomalumiforum/internal/modules/stat/delivery/http"
+	statService "anoa.com/telkomalumiforum/internal/modules/stat/service"
+
+	threadHttp "anoa.com/telkomalumiforum/internal/modules/thread/delivery/http"
+	threadRepo "anoa.com/telkomalumiforum/internal/modules/thread/repository"
+	threadService "anoa.com/telkomalumiforum/internal/modules/thread/service"
+
+	userHttp "anoa.com/telkomalumiforum/internal/modules/user/delivery/http"
+	userRepo "anoa.com/telkomalumiforum/internal/modules/user/repository"
+	userService "anoa.com/telkomalumiforum/internal/modules/user/service"
+
+	viewService "anoa.com/telkomalumiforum/internal/modules/view/service"
+
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
 	"github.com/meilisearch/meilisearch-go"
@@ -27,7 +74,7 @@ type Server struct {
 }
 
 func NewServer(db *gorm.DB, redisClient *redis.Client) *Server {
-	userRepo := repository.NewUserRepository(db)
+	userRepo := userRepo.NewUserRepository(db)
 	imageStorage, err := storage.NewCloudinaryStorage()
 	if err != nil {
 		log.Fatalf("failed to initialize cloudinary storage: %v", err)
@@ -43,62 +90,64 @@ func NewServer(db *gorm.DB, redisClient *redis.Client) *Server {
 	}
 
 	meiliClient := meilisearch.New(meiliHost, meilisearch.WithAPIKey(os.Getenv("MEILI_MASTER_KEY")))
-	meiliService := service.NewMeiliSearchService(meiliClient)
+	meiliSvc := searchService.NewMeiliSearchService(meiliClient)
 
-	authService := service.NewAuthService(userRepo, imageStorage, meiliService)
-	authHandler := handler.NewAuthHandler(authService)
+	authSvc := userService.NewAuthService(userRepo, imageStorage, meiliSvc)
+	authHandler := userHttp.NewAuthHandler(authSvc)
 
-	adminService := service.NewAdminService(userRepo, imageStorage)
-	adminHandler := handler.NewAdminHandler(adminService)
+	adminSvc := adminService.NewAdminService(userRepo, imageStorage)
+	adminHandler := adminHttp.NewAdminHandler(adminSvc)
 
-	leaderboardRepo := repository.NewLeaderboardRepository(db)
+	leaderboardRepo := leaderboardRepo.NewLeaderboardRepository(db)
 
-	profileService := service.NewProfileService(userRepo, imageStorage, leaderboardRepo)
-	profileHandler := handler.NewProfileHandler(profileService)
+	profileSvc := profileService.NewProfileService(userRepo, imageStorage, leaderboardRepo)
+	profileHandler := profileHttp.NewProfileHandler(profileSvc)
 
-	categoryRepo := repository.NewCategoryRepository(db)
-	categoryService := service.NewCategoryService(categoryRepo)
-	categoryHandler := handler.NewCategoryHandler(categoryService)
+	categoryRepo := categoryRepo.NewCategoryRepository(db)
+	categorySvc := categoryService.NewCategoryService(categoryRepo)
+	categoryHandler := categoryHttp.NewCategoryHandler(categorySvc)
 
-	attachmentRepo := repository.NewAttachmentRepository(db)
-	attachmentService := service.NewAttachmentService(attachmentRepo, imageStorage)
-	attachmentHandler := handler.NewAttachmentHandler(attachmentService)
+	attachmentRepo := attachmentRepo.NewAttachmentRepository(db)
+	attachmentSvc := attachmentService.NewAttachmentService(attachmentRepo, imageStorage)
+	attachmentHandler := attachmentHttp.NewAttachmentHandler(attachmentSvc)
 
-	notificationRepo := repository.NewNotificationRepository(db)
-	notificationService := service.NewNotificationService(notificationRepo, redisClient)
-	notificationHandler := handler.NewNotificationHandler(notificationService, redisClient)
+	// Notification Module
+	notificationRepository := notifRepo.NewNotificationRepository(db)
+	notificationSvc := notifService.NewNotificationService(notificationRepository, redisClient)
+	notificationHandler := notiHttp.NewNotificationHandler(notificationSvc, redisClient)
 
-	threadRepo := repository.NewThreadRepository(db)
-	postRepo := repository.NewPostRepository(db)
+	threadRepo := threadRepo.NewRepository(db)
+	postRepo := postRepo.NewPostRepository(db)
 
-	leaderboardService := service.NewLeaderboardService(leaderboardRepo, userRepo, notificationService)
-	leaderboardHandler := handler.NewLeaderboardHandler(leaderboardService)
+	leaderboardSvc := leaderboardService.NewLeaderboardService(leaderboardRepo, userRepo, notificationSvc)
+	leaderboardHandler := leaderboardHttp.NewLeaderboardHandler(leaderboardSvc)
 
-	reactionRepo := repository.NewReactionRepository(db)
-	reactionService := service.NewReactionService(reactionRepo, redisClient, leaderboardService, notificationService, threadRepo, postRepo)
-	reactionHandler := handler.NewReactionHandler(reactionService)
+	reactionRepo := reactionRepo.NewReactionRepository(db)
+	reactionSvc := reactionService.NewReactionService(reactionRepo, redisClient, leaderboardSvc, notificationSvc, threadRepo, postRepo)
+	reactionHandler := reactionHttp.NewReactionHandler(reactionSvc)
 
-	threadService := service.NewThreadService(threadRepo, categoryRepo, userRepo, attachmentRepo, reactionService, imageStorage, redisClient, meiliService, leaderboardService)
-	threadHandler := handler.NewThreadHandler(threadService)
+	threadSvc := threadService.NewService(threadRepo, categoryRepo, userRepo, attachmentRepo, reactionSvc, imageStorage, redisClient, meiliSvc, leaderboardSvc)
+	threadHandler := threadHttp.NewThreadHandler(threadSvc)
 
-	viewService := service.NewViewService(redisClient, threadRepo)
+	viewSvc := viewService.NewViewService(redisClient, threadRepo)
 	if redisClient != nil {
-		go viewService.StartViewSyncWorker(context.Background())
+		go viewSvc.StartViewSyncWorker(context.Background())
 	}
 
-	postService := service.NewPostService(postRepo, threadRepo, userRepo, attachmentRepo, reactionService, imageStorage, redisClient, notificationService, meiliService, leaderboardService)
-	postHandler := handler.NewPostHandler(postService)
+	postSvc := postService.NewPostService(postRepo, threadRepo, userRepo, attachmentRepo, reactionSvc, imageStorage, redisClient, notificationSvc, meiliSvc, leaderboardSvc)
+	postHandler := postHttp.NewPostHandler(postSvc)
 
-	statService := service.NewStatService(userRepo)
-	statHandler := handler.NewStatHandler(statService, threadService)
+	statSvc := statService.NewStatService(userRepo)
+	statHandler := statHttp.NewStatHandler(statSvc, threadSvc)
 
-	menfessRepo := repository.NewMenfessRepository(db)
-	menfessService := service.NewMenfessService(menfessRepo, reactionService, redisClient)
-	menfessHandler := handler.NewMenfessHandler(menfessService, userRepo)
+	// Menfess Module
+	menfessRepository := menfessRepo.NewMenfessRepository(db)
+	menfessSvc := menfessService.NewMenfessService(menfessRepository, reactionSvc, redisClient)
+	menfessHandler := menfessHttp.NewMenfessHandler(menfessSvc, userRepo)
 
 	// Start AI Agent
 	if redisClient != nil {
-		aiAgent := agent.NewAgent(threadService, userRepo, categoryRepo, redisClient)
+		aiAgent := agent.NewAgent(threadSvc, userRepo, categoryRepo, redisClient)
 		aiAgent.Start()
 	}
 
@@ -110,7 +159,7 @@ func NewServer(db *gorm.DB, redisClient *redis.Client) *Server {
 
 		for range ticker.C {
 			log.Println("🧹 Running orphan attachment cleanup...")
-			if err := attachmentService.CleanupOrphanAttachments(context.Background()); err != nil {
+			if err := attachmentSvc.CleanupOrphanAttachments(context.Background()); err != nil {
 				log.Printf("❌ Error cleaning up orphan attachments: %v", err)
 			} else {
 				log.Println("✅ Orphan attachment cleanup completed.")
@@ -120,91 +169,85 @@ func NewServer(db *gorm.DB, redisClient *redis.Client) *Server {
 
 	router := gin.New()
 
+	setupCORS(router)
+
 	router.Use(gin.Recovery())
 	router.Use(gin.LoggerWithConfig(gin.LoggerConfig{
 		SkipPaths: []string{"/api/menfess"},
 	}))
 
-	setupCORS(router)
-
 	authMiddleware := middleware.NewAuthMiddleware(userRepo)
 
 	api := router.Group("/api")
+	
+	// Public routes (no auth required)
+	auth := api.Group("/auth")
 	{
-		auth := api.Group("/auth")
 		auth.POST("/login", authHandler.Login)
 		auth.GET("/google/login", authHandler.GoogleLogin)
 		auth.GET("/google/callback", authHandler.GoogleCallback)
 	}
 
-	// Protected routes (perlu auth)
-	api.Use(authMiddleware.RequireAuth())
+	// Protected routes (apply auth middleware explicitly)
+	protected := api.Group("")
+	protected.Use(authMiddleware.RequireAuth())
 	{
-		admin := api.Group("/admin")
-		admin.Use(authMiddleware.RequireAdmin())
+		// Admin routes
+		adminGroup := protected.Group("/admin")
+		adminGroup.Use(authMiddleware.RequireAdmin())
 		{
-			admin.POST("/users", adminHandler.CreateUser)
-			admin.GET("/users", adminHandler.GetAllUsers)
-			admin.PUT("/users/:id", adminHandler.UpdateUser)
-			admin.DELETE("/users/:id", adminHandler.DeleteUser)
-			admin.POST("/categories", categoryHandler.CreateCategory)
-			admin.DELETE("/categories/:id", categoryHandler.DeleteCategory)
+			adminGroup.POST("/users", adminHandler.CreateUser)
+			adminGroup.GET("/users", adminHandler.GetAllUsers)
+			adminGroup.PUT("/users/:id", adminHandler.UpdateUser)
+			adminGroup.DELETE("/users/:id", adminHandler.DeleteUser)
+			adminGroup.POST("/categories", categoryHandler.CreateCategory)
+			adminGroup.DELETE("/categories/:id", categoryHandler.DeleteCategory)
 		}
 
-		api.GET("/users/count", statHandler.GetTotalUsers)
-		api.GET("/categories", categoryHandler.GetAllCategories)
+		// User routes
+		protected.GET("/users/count", statHandler.GetTotalUsers)
+		protected.GET("/categories", categoryHandler.GetAllCategories)
 		
-		threads := api.Group("/threads") 
-		{
-			threads.POST("/", threadHandler.CreateThread)
-			threads.GET("/", threadHandler.GetAllThreads)
-			threads.GET("/me", threadHandler.GetMyThreads)
-			threads.GET("/user/:username", threadHandler.GetThreadsByUsername)
-			threads.GET("/slug/:slug", threadHandler.GetThreadBySlug)
-			threads.PUT("/:thread_id", threadHandler.UpdateThread)
-			threads.DELETE("/:thread_id", threadHandler.DeleteThread)
-			threads.POST("/:thread_id/posts", postHandler.CreatePost)
-			threads.GET("/:thread_id/posts", postHandler.GetPostsByThreadID)
-			threads.GET("/trending", statHandler.GetTrendingThreads)
-		}
+		// Thread routes
+		protected.POST("/threads", threadHandler.CreateThread)
+		protected.GET("/threads", threadHandler.GetAllThreads)
+		protected.GET("/threads/me", threadHandler.GetMyThreads)
+		protected.GET("/threads/trending", statHandler.GetTrendingThreads)
+		protected.GET("/threads/user/:username", threadHandler.GetThreadsByUsername)
+		protected.GET("/threads/slug/:slug", threadHandler.GetThreadBySlug)
+		protected.PUT("/threads/:thread_id", threadHandler.UpdateThread)
+		protected.DELETE("/threads/:thread_id", threadHandler.DeleteThread)
+		protected.POST("/threads/:thread_id/posts", postHandler.CreatePost)
+		protected.GET("/threads/:thread_id/posts", postHandler.GetPostsByThreadID)
 
-		posts := api.Group("/posts") 
-		{
-			posts.GET("/:post_id", postHandler.GetPostByID)
-			posts.PUT("/:post_id", postHandler.UpdatePost)
-			posts.DELETE("/:post_id", postHandler.DeletePost)
-		}
+		// Post routes
+		protected.GET("/posts/:post_id", postHandler.GetPostByID)
+		protected.PUT("/posts/:post_id", postHandler.UpdatePost)
+		protected.DELETE("/posts/:post_id", postHandler.DeletePost)
 
-		profile := api.Group("/profile")
-		{
-			profile.GET("/:username", profileHandler.GetProfileByUsername)
-			profile.GET("/me", profileHandler.GetCurrentProfile)
-			profile.PUT("", profileHandler.UpdateProfile)
-		}
+		// Profile routes
+		protected.GET("/profile/:username", profileHandler.GetProfileByUsername)
+		protected.GET("/profile/me", profileHandler.GetCurrentProfile)
+		protected.PUT("/profile", profileHandler.UpdateProfile)
 		
-		notifications := api.Group("/notifications")
-		{
-			notifications.GET("", notificationHandler.GetNotifications)
-			notifications.GET("/unread-count", notificationHandler.UnreadCount)
-			notifications.PUT("/:id/read", notificationHandler.MarkAsRead)
-			notifications.PUT("/read-all", notificationHandler.MarkAllAsRead)
-			notifications.GET("/ws", notificationHandler.HandleWebSocket)
-		}
+		// Notification routes
+		protected.GET("/notifications", notificationHandler.GetNotifications)
+		protected.GET("/notifications/unread-count", notificationHandler.UnreadCount)
+		protected.PUT("/notifications/:id/read", notificationHandler.MarkAsRead)
+		protected.PUT("/notifications/read-all", notificationHandler.MarkAllAsRead)
+		protected.GET("/notifications/ws", notificationHandler.HandleWebSocket)
 		
-		menfess := api.Group("/menfess")
-		{
-			menfess.POST("", menfessHandler.CreateMenfess)
-			menfess.GET("", menfessHandler.GetMenfesses)
-		}
+		// Menfess routes
+		protected.POST("/menfess", menfessHandler.CreateMenfess)
+		protected.GET("/menfess", menfessHandler.GetMenfesses)
 
-		reactions := api.Group("/reactions") 
-		{
-			reactions.POST("/", reactionHandler.ToggleReaction)
-			reactions.GET("/:refType/:refID", reactionHandler.GetReactions)
-		}
+		// Reaction routes
+		protected.POST("/reactions", reactionHandler.ToggleReaction)
+		protected.GET("/reactions/:refType/:refID", reactionHandler.GetReactions)
 		
-		api.POST("/upload", attachmentHandler.UploadAttachment)
-		api.GET("/leaderboard", leaderboardHandler.GetLeaderboard)
+		// Other protected routes
+		protected.POST("/upload", attachmentHandler.UploadAttachment)
+		protected.GET("/leaderboard", leaderboardHandler.GetLeaderboard)
 	}
 
 	return &Server{

@@ -6,17 +6,17 @@ import (
 	"os"
 	"strings"
 
-	"anoa.com/telkomalumiforum/internal/repository"
+	userRepo "anoa.com/telkomalumiforum/internal/modules/user/repository"
 	"github.com/gin-gonic/gin"
 	"github.com/golang-jwt/jwt/v5"
 )
 
 type AuthMiddleware struct {
-	userRepo repository.UserRepository
+	userRepo userRepo.UserRepository
 	secret   string
 }
 
-func NewAuthMiddleware(userRepo repository.UserRepository) *AuthMiddleware {
+func NewAuthMiddleware(userRepo userRepo.UserRepository) *AuthMiddleware {
 	secret := os.Getenv("JWT_SECRET")
 	if secret == "" {
 		secret = "12345"
