@@ -8,6 +8,8 @@ import (
 	"time"
 
 	"anoa.com/telkomalumiforum/internal/agent"
+	"anoa.com/telkomalumiforum/internal/agent/agents"
+	"anoa.com/telkomalumiforum/internal/agent/providers"
 	"anoa.com/telkomalumiforum/internal/middleware"
 	"anoa.com/telkomalumiforum/pkg/storage"
 
@@ -145,10 +147,36 @@ func NewServer(db *gorm.DB, redisClient *redis.Client) *Server {
 	menfessSvc := menfessService.NewMenfessService(menfessRepository, reactionSvc, redisClient)
 	menfessHandler := menfessHttp.NewMenfessHandler(menfessSvc, userRepo)
 
-	// Start AI Agent
+	// Start AI Agent Scheduler
 	if redisClient != nil {
-		aiAgent := agent.NewAgent(threadSvc, userRepo, categoryRepo, redisClient)
-		aiAgent.Start()
+		// Initialize Agent Scheduler
+		scheduler := agent.NewScheduler()
+
+		// Initialize LLM Provider (Gemini)
+		llmProvider, err := providers.NewGeminiProvider(context.Background(), "")
+		if err != nil {
+			log.Printf("⚠️ Failed to initialize LLM provider: %v. NewsThreadAgent will not be registered.", err)
+		} else {
+			// Create & Register NewsThreadAgent
+			newsAgent := agents.NewNewsThreadAgent(
+				threadSvc,
+				userRepo,
+				categoryRepo,
+				redisClient,
+				llmProvider,
+				agents.DefaultNewsThreadConfig(),
+			)
+			scheduler.RegisterAgent(newsAgent)
+		}
+
+		// Start the scheduler
+		scheduler.Start()
+		log.Printf("🤖 Agent system initialized with %d agent(s)", len(scheduler.GetRegisteredAgents()))
+
+		// TODO: Register more agents here in the future
+		// Example:
+		// digestAgent := agents.NewDigestAgent(...)
+		// scheduler.RegisterAgent(digestAgent)
 	}
 
 	// Start Orphan Cleanup Job (Background)
