@@ -7,7 +7,7 @@ INSERT INTO users (username, email, password_hash, role_id) VALUES
 ('fardhan', 'fardhan@sekolah.sch.id', 'hash123', 3); -- Siswa
 
 -- Isi Profile
-INSERT INTO profiles (user_id, full_name, identity_number, class_grade) VALUES
+INSERT INTO profiles (user_id, full_name, identity_number, angkatan) VALUES
 (1, 'Zev Hadid Santoso', '19800101', NULL),
 (2, 'Fardhan Rasya', '123456', 'XI RPL 2');
 

@@ -18,10 +18,10 @@ type UpdateProfileResponse struct {
 }
 
 type PublicProfileResponse struct {
-	Username   string    `json:"username"`
-	Role       string    `json:"role"`
-	AvatarURL  *string   `json:"avatar_url,omitempty"`
-	CreatedAt  time.Time `json:"created_at"`
-	ClassGrade *string   `json:"class_grade,omitempty"`
-	Bio        *string   `json:"bio,omitempty"`
+	Username  string    `json:"username"`
+	Role      string    `json:"role"`
+	AvatarURL *string   `json:"avatar_url,omitempty"`
+	CreatedAt time.Time `json:"created_at"`
+	Angkatan  *string   `json:"angkatan,omitempty"`
+	Bio       *string   `json:"bio,omitempty"`
 }

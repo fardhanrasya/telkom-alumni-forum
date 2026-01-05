@@ -21,7 +21,7 @@ func formatValidationError(err error) string {
 
 func getFieldErrorMessage(fe validator.FieldError) string {
 	field := getFieldName(fe.Field())
-	
+
 	switch fe.Tag() {
 	case "required":
 		return fmt.Sprintf("%s wajib diisi", field)
@@ -50,10 +50,10 @@ func getFieldName(field string) string {
 		"Role":           "Role",
 		"FullName":       "Nama lengkap",
 		"IdentityNumber": "Nomor identitas",
-		"ClassGrade":     "Kelas",
+		"Angkatan":       "Angkatan",
 		"Bio":            "Bio",
 	}
-	
+
 	if name, ok := fieldNames[field]; ok {
 		return name
 	}

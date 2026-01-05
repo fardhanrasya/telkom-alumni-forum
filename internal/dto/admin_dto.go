@@ -9,7 +9,7 @@ type CreateUserInput struct {
 	Role           string  `json:"role" form:"role" binding:"required"`
 	FullName       string  `json:"full_name" form:"full_name" binding:"required"`
 	IdentityNumber *string `json:"identity_number" form:"identity_number"`
-	ClassGrade     *string `json:"class_grade" form:"class_grade"`
+	Angkatan       *string `json:"angkatan" form:"angkatan"`
 	Bio            *string `json:"bio" form:"bio"`
 }
 
@@ -26,7 +26,7 @@ type UpdateAdminUserInput struct {
 	Role           string  `json:"role" form:"role"`
 	FullName       string  `json:"full_name" form:"full_name"`
 	IdentityNumber *string `json:"identity_number" form:"identity_number"`
-	ClassGrade     *string `json:"class_grade" form:"class_grade"`
+	Angkatan       *string `json:"angkatan" form:"angkatan"`
 	Bio            *string `json:"bio" form:"bio"`
 }
 
