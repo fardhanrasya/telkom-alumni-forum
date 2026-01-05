@@ -24,6 +24,7 @@ cmd/server/server.exe
 *.dylib
 *.test
 *.out
+main
 
 ### Dependency / tooling caches
 go.sum.tmp
