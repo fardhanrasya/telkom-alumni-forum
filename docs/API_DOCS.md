@@ -41,7 +41,7 @@ Content-Type: multipart/form-data
 - `role` (required): string (admin/guru/siswa)
 - `full_name` (required): string
 - `identity_number` (optional): string
-- `class_grade` (optional): string
+- `angkatan` (optional): string
 - `bio` (optional): string
 - `avatar` (optional): file gambar
 
@@ -66,7 +66,7 @@ Content-Type: multipart/form-data
     "id": "550e8400-e29b-41d4-a716-446655440000",
     "full_name": "John Doe",
     "identity_number": "123456",
-    "class_grade": "12A",
+    "angkatan": "12A",
     "bio": "Hello world"
   }
 }
@@ -111,7 +111,7 @@ Authorization: Bearer <admin_token>
         "user_id": "550e8400-e29b-41d4-a716-446655440000",
         "full_name": "John Doe",
         "identity_number": "123456",
-        "class_grade": "12A",
+        "angkatan": "12A",
         "bio": "Hello world",
         "created_at": "2024-01-01T00:00:00Z"
       }
@@ -143,7 +143,7 @@ Content-Type: multipart/form-data
 - `role` (optional): string (nama role: admin/guru/siswa)
 - `full_name` (optional): string
 - `identity_number` (optional): string
-- `class_grade` (optional): string
+- `angkatan` (optional): string
 - `bio` (optional): string
 - `avatar` (optional): file gambar
 
@@ -514,7 +514,7 @@ Mendapatkan data profil publik user berdasarkan username. Endpoint ini tidak mem
   "role": "siswa",
   "avatar_url": "https://...",
   "created_at": "2024-01-01T00:00:00Z",
-  "class_grade": "12A",
+  "angkatan": "12A",
   "bio": "Hello world",
   "gamification_status": {
     "rank_name": "Tokoh",
@@ -568,7 +568,7 @@ Authorization: Bearer <user_token>
     "user_id": "550e8400-e29b-41d4-a716-446655440000",
     "full_name": "John Doe",
     "identity_number": "123456",
-    "class_grade": "12A",
+    "angkatan": "12A",
     "bio": "Hello world",
     "created_at": "2024-01-01T00:00:00Z"
   },
@@ -624,7 +624,7 @@ Content-Type: multipart/form-data
     "user_id": "550e8400-e29b-41d4-a716-446655440000",
     "full_name": "John Doe",
     "identity_number": "123456",
-    "class_grade": "12A",
+    "angkatan": "12A",
     "bio": "Updated bio",
     "created_at": "2024-01-01T00:00:00Z"
   }

@@ -27,7 +27,7 @@ type PublicProfileResponse struct {
 	Role               string                       `json:"role"`
 	AvatarURL          *string                      `json:"avatar_url,omitempty"`
 	CreatedAt          time.Time                    `json:"created_at"`
-	ClassGrade         *string                      `json:"class_grade,omitempty"`
+	Angkatan           *string                      `json:"angkatan,omitempty"`
 	Bio                *string                      `json:"bio,omitempty"`
 	GamificationStatus commonDto.GamificationStatus `json:"gamification_status"`
 }

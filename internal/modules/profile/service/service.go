@@ -159,7 +159,7 @@ func (s *profileService) GetProfileByUsername(ctx context.Context, username stri
 	}
 
 	if user.Profile != nil {
-		response.ClassGrade = user.Profile.ClassGrade
+		response.Angkatan = user.Profile.Angkatan
 		response.Bio = user.Profile.Bio
 	}
 

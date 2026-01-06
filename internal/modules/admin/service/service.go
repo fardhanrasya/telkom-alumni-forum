@@ -81,7 +81,7 @@ func (s *adminService) CreateUser(ctx context.Context, input dto.CreateUserInput
 	profile := &entity.Profile{
 		FullName:       input.FullName,
 		IdentityNumber: normalizeOptional(input.IdentityNumber),
-		ClassGrade:     normalizeOptional(input.ClassGrade),
+		Angkatan:       normalizeOptional(input.Angkatan),
 		Bio:            normalizeOptional(input.Bio),
 	}
 
@@ -196,8 +196,8 @@ func (s *adminService) UpdateUser(ctx context.Context, id string, input dto.Upda
 	if input.IdentityNumber != nil {
 		user.Profile.IdentityNumber = normalizeOptional(input.IdentityNumber)
 	}
-	if input.ClassGrade != nil {
-		user.Profile.ClassGrade = normalizeOptional(input.ClassGrade)
+	if input.Angkatan != nil {
+		user.Profile.Angkatan = normalizeOptional(input.Angkatan)
 	}
 	if input.Bio != nil {
 		user.Profile.Bio = normalizeOptional(input.Bio)

@@ -44,7 +44,7 @@ type Profile struct {
 	UserID         uuid.UUID `gorm:"type:uuid;primaryKey" json:"user_id"`
 	FullName       string    `gorm:"size:100;not null" json:"full_name"`
 	IdentityNumber *string   `gorm:"size:50" json:"identity_number,omitempty"`
-	ClassGrade     *string   `gorm:"size:20" json:"class_grade,omitempty"`
+	Angkatan       *string   `gorm:"size:20" json:"angkatan,omitempty"`
 	Bio            *string   `gorm:"type:text" json:"bio,omitempty"`
 	CreatedAt      time.Time `gorm:"autoCreateTime" json:"created_at"`
 }

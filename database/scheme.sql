@@ -31,7 +31,7 @@ CREATE TABLE profiles (
     user_id UUID PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
     full_name VARCHAR(100) NOT NULL,
     identity_number VARCHAR(50), -- NIS/NIP
-    class_grade VARCHAR(20), -- 'XII RPL 1', Nullable untuk guru
+    angkatan VARCHAR(20), -- 'XII RPL 1', Nullable untuk guru
     bio TEXT,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );

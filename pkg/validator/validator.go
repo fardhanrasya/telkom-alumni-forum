@@ -50,7 +50,7 @@ func getFieldName(field string) string {
 		"Role":           "Role",
 		"FullName":       "Nama lengkap",
 		"IdentityNumber": "Nomor identitas",
-		"ClassGrade":     "Kelas",
+		"Angkatan":       "Angkatan",
 		"Bio":            "Bio",
 	}
 
