@@ -3,6 +3,7 @@ package thread
 import (
 	"context"
 	"fmt"
+	"slices"
 
 	"anoa.com/telkomalumiforum/internal/entity"
 	attachmentRepo "anoa.com/telkomalumiforum/internal/modules/attachment/repository"
@@ -48,21 +49,7 @@ type service struct {
 }
 
 func NewService(threadRepo repo.Repository, categoryRepo categoryRepo.CategoryRepository, userRepo userRepo.UserRepository, attachmentRepo attachmentRepo.AttachmentRepository, reactionService reaction.ReactionService, fileStorage storage.ImageStorage, redisClient *redis.Client, meili search.MeiliSearchService, leaderboardService leaderboard.LeaderboardService) Service {
-	// viewService := view.NewViewService(redisClient, threadRepo)
-	// ViewService likely expects repository.ThreadRepository, we need to check if we broke it.
-	// The ViewService signature wasn't refactored yet. If ViewService expects the OLD interface, it will fail because we are passing the NEW interface.
-	// But wait, the OLD interface `repository.ThreadRepository` checks methods. The new `repo.Repository` has SAME methods.
-	// Go interfaces are implicit. So as long as `repo.Repository` has methods of `repository.ThreadRepository` (if it was defined in repository package), it matches.
-	// However, `repository.ThreadRepository` was DELETED/MOVED.
-	// So `view.NewViewService` signature expects WHAT? It expects `repository.ThreadRepository` which is now GONE from `internal/repository`.
-	// We must Fix `view` service too.
-
-	// For now, I will comment out ViewService usage or assume I'm fixing it.
-	// To be safe, I will invoke a fix on ViewService in the next step.
-	// But `view.NewViewService` is imported.
-	// The `view` package imports `internal/repository` which NO LONGER has `ThreadRepository`.
-	// So `view` package will fail to compile.
-
+	
 	viewService := view.NewViewService(redisClient, threadRepo)
 
 	return &service{
@@ -164,15 +151,7 @@ func (s *service) GetAllThreads(ctx context.Context, userID uuid.UUID, filter co
 
 	if len(allowed) > 0 {
 		if filter.Audience != "" {
-			isAllowed := false
-			for _, a := range allowed {
-				if a == filter.Audience {
-					isAllowed = true
-					break
-				}
-			}
-			if !isAllowed {
-				// Return empty if filtered audience is not allowed
+			if slices.Contains(allowed, filter.Audience) {
 				return &commonDto.PaginatedThreadResponse{
 					Data: []commonDto.ThreadResponse{},
 					Meta: commonDto.PaginationMeta{
