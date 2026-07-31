@@ -43,5 +43,6 @@ coverage.txt
 ### Misc
 dist/
 tmp/
+*.sql
 
 feat-docs

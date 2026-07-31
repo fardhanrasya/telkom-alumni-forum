@@ -103,3 +103,39 @@ func (m *AuthMiddleware) RequireAdmin() gin.HandlerFunc {
 		c.Next()
 	}
 }
+
+func (m *AuthMiddleware) OptionalAuth() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		tokenString := ""
+		authHeader := c.GetHeader("Authorization")
+
+		if authHeader != "" {
+			parts := strings.Split(authHeader, " ")
+			if len(parts) == 2 && parts[0] == "Bearer" {
+				tokenString = parts[1]
+			}
+		}
+
+		if tokenString == "" {
+			tokenString = c.Query("token")
+		}
+
+		if tokenString != "" {
+			token, err := jwt.ParseWithClaims(tokenString, &jwt.RegisteredClaims{}, func(token *jwt.Token) (interface{}, error) {
+				if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
+					return nil, fmt.Errorf("unexpected signing method: %v", token.Header["alg"])
+				}
+				return []byte(m.secret), nil
+			})
+
+			if err == nil && token.Valid {
+				if claims, ok := token.Claims.(*jwt.RegisteredClaims); ok {
+					c.Set("user_id", claims.Subject)
+				}
+			}
+		}
+
+		c.Next()
+	}
+}
+

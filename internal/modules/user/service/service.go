@@ -125,10 +125,6 @@ func (s *authService) GoogleCallback(ctx context.Context, code string) (*dto.Aut
 		return nil, errors.New("failed to decode user info: " + err.Error())
 	}
 
-	if !strings.HasSuffix(googleUser.Email, "@student.smktelkom-jkt.sch.id") {
-		return nil, errors.New("email domain must be @student.smktelkom-jkt.sch.id")
-	}
-
 	user, err := s.repo.FindByEmail(ctx, googleUser.Email)
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
@@ -163,7 +159,7 @@ func (s *authService) GoogleCallback(ctx context.Context, code string) (*dto.Aut
 
 			newProfile := &entity.Profile{
 				FullName: googleUser.Name,
-				Bio:      stringPtr("Student at SMK Telkom Jakarta"),
+				Bio:      stringPtr("Anggota Komunitas Telkom Forum"),
 			}
 
 			if err := s.repo.Create(ctx, newUser, newProfile); err != nil {

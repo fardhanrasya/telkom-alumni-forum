@@ -216,7 +216,24 @@ func NewServer(db *gorm.DB, redisClient *redis.Client) *Server {
 		auth.GET("/google/callback", authHandler.GoogleCallback)
 	}
 
-	// Protected routes (apply auth middleware explicitly)
+	// Public read routes (Optional auth: guests can view, logged in users get extra state)
+	publicRead := api.Group("")
+	publicRead.Use(authMiddleware.OptionalAuth())
+	{
+		publicRead.GET("/users/count", statHandler.GetTotalUsers)
+		publicRead.GET("/categories", categoryHandler.GetAllCategories)
+		publicRead.GET("/threads", threadHandler.GetAllThreads)
+		publicRead.GET("/threads/trending", statHandler.GetTrendingThreads)
+		publicRead.GET("/threads/user/:username", threadHandler.GetThreadsByUsername)
+		publicRead.GET("/threads/slug/:slug", threadHandler.GetThreadBySlug)
+		publicRead.GET("/threads/:thread_id/posts", postHandler.GetPostsByThreadID)
+		publicRead.GET("/posts/:post_id", postHandler.GetPostByID)
+		publicRead.GET("/profile/:username", profileHandler.GetProfileByUsername)
+		publicRead.GET("/reactions/:refType/:refID", reactionHandler.GetReactions)
+		publicRead.GET("/leaderboard", leaderboardHandler.GetLeaderboard)
+	}
+
+	// Protected routes (require valid JWT token)
 	protected := api.Group("")
 	protected.Use(authMiddleware.RequireAuth())
 	{
@@ -232,29 +249,16 @@ func NewServer(db *gorm.DB, redisClient *redis.Client) *Server {
 			adminGroup.DELETE("/categories/:id", categoryHandler.DeleteCategory)
 		}
 
-		// User routes
-		protected.GET("/users/count", statHandler.GetTotalUsers)
-		protected.GET("/categories", categoryHandler.GetAllCategories)
-		
-		// Thread routes
+		// Protected Thread & Post actions
 		protected.POST("/threads", threadHandler.CreateThread)
-		protected.GET("/threads", threadHandler.GetAllThreads)
 		protected.GET("/threads/me", threadHandler.GetMyThreads)
-		protected.GET("/threads/trending", statHandler.GetTrendingThreads)
-		protected.GET("/threads/user/:username", threadHandler.GetThreadsByUsername)
-		protected.GET("/threads/slug/:slug", threadHandler.GetThreadBySlug)
 		protected.PUT("/threads/:thread_id", threadHandler.UpdateThread)
 		protected.DELETE("/threads/:thread_id", threadHandler.DeleteThread)
 		protected.POST("/threads/:thread_id/posts", postHandler.CreatePost)
-		protected.GET("/threads/:thread_id/posts", postHandler.GetPostsByThreadID)
-
-		// Post routes
-		protected.GET("/posts/:post_id", postHandler.GetPostByID)
 		protected.PUT("/posts/:post_id", postHandler.UpdatePost)
 		protected.DELETE("/posts/:post_id", postHandler.DeletePost)
 
-		// Profile routes
-		protected.GET("/profile/:username", profileHandler.GetProfileByUsername)
+		// Protected Profile actions
 		protected.GET("/profile/me", profileHandler.GetCurrentProfile)
 		protected.PUT("/profile", profileHandler.UpdateProfile)
 		
@@ -269,13 +273,9 @@ func NewServer(db *gorm.DB, redisClient *redis.Client) *Server {
 		protected.POST("/menfess", menfessHandler.CreateMenfess)
 		protected.GET("/menfess", menfessHandler.GetMenfesses)
 
-		// Reaction routes
+		// Reaction & Upload routes
 		protected.POST("/reactions", reactionHandler.ToggleReaction)
-		protected.GET("/reactions/:refType/:refID", reactionHandler.GetReactions)
-		
-		// Other protected routes
 		protected.POST("/upload", attachmentHandler.UploadAttachment)
-		protected.GET("/leaderboard", leaderboardHandler.GetLeaderboard)
 	}
 
 	return &Server{

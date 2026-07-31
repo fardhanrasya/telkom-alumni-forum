@@ -25,6 +25,8 @@ services:
   redis:
     image: redis:alpine
     container_name: telkom-forum-redis
+    ports:
+      - "6379:6379"
     volumes:
       - redis_data:/data
     healthcheck:
@@ -43,8 +45,8 @@ services:
       - "7700:7700"
     environment:
       - MEILI_MASTER_KEY=${MEILI_MASTER_KEY}
-      - MEILI_ENV=${MEILI_ENV}
-      - MEILI_HTTP_CORS_ALLOW_ORIGINS=${ALLOWED_ORIGINS}
+      - MEILI_ENV=${MEILI_ENV:-development}
+      - MEILI_HTTP_CORS_ALLOW_ORIGINS=${ALLOWED_ORIGINS:-*}
       - MEILI_MAX_INDEXING_MEMORY=200Mb
     volumes:
       - meilisearch_data:/meili_data
@@ -60,10 +62,16 @@ services:
   app:
     build:
       context: .
-      dockerfile: Dockerfile
+      dockerfile: Dockerfile.dev
     container_name: telkom-forum-app
+    env_file:
+      - .env
+    volumes:
+      - .:/app
+      - go_build_cache:/root/.cache/go-build
+      - go_mod_cache:/go/pkg/mod
     environment:
-      APP_ENV: ${APP_ENV:-production}
+      APP_ENV: ${APP_ENV:-development}
       DB_HOST: postgres
       DB_USER: ${DB_USER:-postgres}
       DB_PASS: ${DB_PASS:-postgres}
@@ -71,17 +79,17 @@ services:
       DB_PORT: 5432
       JWT_SECRET: ${JWT_SECRET}
       PORT: 8080
-      ALLOWED_ORIGINS: ${ALLOWED_ORIGINS:-http://localhost:3000}
+      ALLOWED_ORIGINS: ${ALLOWED_ORIGINS:-*}
       CLOUDINARY_URL: ${CLOUDINARY_URL:-}
-      MEILISEARCH_HOST: meilisearch
+      MEILISEARCH_HOST: http://meilisearch:7700
       MEILI_MASTER_KEY: ${MEILI_MASTER_KEY}
       REDIS_HOST: redis
       REDIS_PORT: 6379
       GEMINI_API_KEY: ${GEMINI_API_KEY}
       GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID}
-      FRONTEND_URL: ${FRONTEND_URL}
+      FRONTEND_URL: ${FRONTEND_URL:-http://localhost:3000}
       GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET}
-      GOOGLE_REDIRECT_URL: ${GOOGLE_REDIRECT_URL}
+      GOOGLE_REDIRECT_URL: ${GOOGLE_REDIRECT_URL:-http://localhost:8080/api/auth/google/callback}
     ports:
       - "8080:8080"
     depends_on:
@@ -101,6 +109,10 @@ volumes:
   redis_data:
     driver: local
   meilisearch_data:
+    driver: local
+  go_build_cache:
+    driver: local
+  go_mod_cache:
     driver: local
 
 networks:

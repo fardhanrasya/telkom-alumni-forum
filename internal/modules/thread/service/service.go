@@ -141,12 +141,15 @@ func (s *service) CreateThread(ctx context.Context, userID uuid.UUID, req thread
 }
 
 func (s *service) GetAllThreads(ctx context.Context, userID uuid.UUID, filter commonDto.ThreadFilter) (*commonDto.PaginatedThreadResponse, error) {
-	user, err := s.userRepo.FindByID(ctx, userID.String())
-	if err != nil {
-		return nil, fmt.Errorf("user not found: %w", apperror.ErrNotFound)
+	roleName := "guest"
+	if userID != uuid.Nil {
+		user, err := s.userRepo.FindByID(ctx, userID.String())
+		if err == nil && user != nil && user.Role.Name != "" {
+			roleName = user.Role.Name
+		}
 	}
 
-	allowed := s.determineAllowedAudiences(user.Role.Name)
+	allowed := s.determineAllowedAudiences(roleName)
 	var effectiveAudiences []string
 
 	if len(allowed) > 0 {
@@ -255,9 +258,12 @@ func (s *service) GetThreadsByUsername(ctx context.Context, currentUserID uuid.U
 		limit = 10
 	}
 
-	currentUser, err := s.userRepo.FindByID(ctx, currentUserID.String())
-	if err != nil {
-		return nil, fmt.Errorf("current user not found: %w", apperror.ErrNotFound)
+	roleName := "guest"
+	if currentUserID != uuid.Nil {
+		currentUser, err := s.userRepo.FindByID(ctx, currentUserID.String())
+		if err == nil && currentUser != nil && currentUser.Role.Name != "" {
+			roleName = currentUser.Role.Name
+		}
 	}
 
 	user, err := s.userRepo.FindByUsername(ctx, username)
@@ -265,7 +271,7 @@ func (s *service) GetThreadsByUsername(ctx context.Context, currentUserID uuid.U
 		return nil, fmt.Errorf("user not found: %w", apperror.ErrNotFound)
 	}
 
-	allowedAudiences := s.determineAllowedAudiences(currentUser.Role.Name)
+	allowedAudiences := s.determineAllowedAudiences(roleName)
 
 	offset := (page - 1) * limit
 	threads, total, err := s.threadRepo.FindByUserID(ctx, user.ID, allowedAudiences, offset, limit)

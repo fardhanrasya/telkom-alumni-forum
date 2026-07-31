@@ -66,11 +66,7 @@ func (h *ThreadHandler) GetAllThreads(c *gin.Context) {
 		filter.Limit = 10
 	}
 
-	userID, err := response.GetUserID(c)
-	if err != nil {
-		response.ResponseError(c, err)
-		return
-	}
+	userID := response.GetOptionalUserID(c)
 
 	threads, err := h.service.GetAllThreads(c.Request.Context(), userID, filter)
 	if err != nil {
@@ -163,11 +159,7 @@ func (h *ThreadHandler) UpdateThread(c *gin.Context) {
 func (h *ThreadHandler) GetThreadBySlug(c *gin.Context) {
 	slug := c.Param("slug")
 
-	userID, err := response.GetUserID(c)
-	if err != nil {
-		response.ResponseError(c, err)
-		return
-	}
+	userID := response.GetOptionalUserID(c)
 
 	// Get thread first
 	thread, err := h.service.GetThreadBySlug(c.Request.Context(), userID, slug)
@@ -200,11 +192,7 @@ func (h *ThreadHandler) GetThreadsByUsername(c *gin.Context) {
 		filter.Limit = 10
 	}
 
-	userID, err := response.GetUserID(c)
-	if err != nil {
-		response.ResponseError(c, err)
-		return
-	}
+	userID := response.GetOptionalUserID(c)
 
 	threads, err := h.service.GetThreadsByUsername(c.Request.Context(), userID, username, filter.Page, filter.Limit)
 	if err != nil {

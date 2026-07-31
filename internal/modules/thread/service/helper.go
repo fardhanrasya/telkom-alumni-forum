@@ -45,6 +45,24 @@ func (s *service) buildThreadResponse(ctx context.Context, thread entity.Thread,
 		}
 	}
 
+	// Extract featured image from attachments or HTML content
+	var firstImageURL *string
+	for _, att := range thread.Attachments {
+		if strings.HasPrefix(att.FileType, "image") || strings.Contains(att.FileURL, "cloudinary") || strings.Contains(att.FileURL, ".png") || strings.Contains(att.FileURL, ".jpg") || strings.Contains(att.FileURL, ".jpeg") || strings.Contains(att.FileURL, ".webp") {
+			url := att.FileURL
+			firstImageURL = &url
+			break
+		}
+	}
+	if firstImageURL == nil {
+		re := regexp.MustCompile(`<img[^>]+src=["']([^"']+)["']`)
+		matches := re.FindStringSubmatch(thread.Content)
+		if len(matches) > 1 {
+			imgSrc := matches[1]
+			firstImageURL = &imgSrc
+		}
+	}
+
 	return commonDto.ThreadResponse{
 		ID:           thread.ID,
 		CategoryName: thread.Category.Name,
@@ -54,6 +72,7 @@ func (s *service) buildThreadResponse(ctx context.Context, thread entity.Thread,
 		Audience:     thread.Audience,
 		Views:        thread.Views,
 		Author:       authorResponse,
+		ImageURL:     firstImageURL,
 		Attachments:  attachments,
 		Reactions:    *reactions,
 		CreatedAt:    thread.CreatedAt.Format("2006-01-02 15:04:05"),
@@ -140,6 +159,8 @@ func (s *service) determineAllowedAudiences(roleName string) []string {
 		return []string{entity.AudienceSiswa, entity.AudienceSemua}
 	case entity.RoleGuru:
 		return []string{entity.AudienceGuru, entity.AudienceSemua}
+	case "guest":
+		return []string{entity.AudienceSemua}
 	default:
 		// Admin or others effectively see all
 		return nil
