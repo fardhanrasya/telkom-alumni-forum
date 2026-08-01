@@ -71,11 +71,12 @@ func (s *service) buildThreadResponse(ctx context.Context, thread entity.Thread,
 		Content:      thread.Content,
 		Audience:     thread.Audience,
 		Views:        thread.Views,
+		ReplyCount:   int64(thread.RepliesCount),
 		Author:       authorResponse,
 		ImageURL:     firstImageURL,
 		Attachments:  attachments,
 		Reactions:    *reactions,
-		CreatedAt:    thread.CreatedAt.Format("2006-01-02 15:04:05"),
+		CreatedAt:    thread.CreatedAt.Format(time.RFC3339),
 	}
 }
 
@@ -172,4 +173,9 @@ func (s *service) processThreadAttachments(ctx context.Context, threadID uuid.UU
 		return s.attachmentRepo.UpdateThreadID(ctx, attachmentIDs, threadID, userID)
 	}
 	return nil
+}
+
+func stripHTMLTags(html string) string {
+	re := regexp.MustCompile("<[^>]*>")
+	return re.ReplaceAllString(html, "")
 }

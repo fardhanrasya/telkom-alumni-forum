@@ -1,19 +1,17 @@
 package dto
 
 type CreateThreadRequest struct {
-	CategoryID    string `json:"category_id" binding:"required,uuid"`
-	Title         string `json:"title" binding:"required,max=120"`
+	CategoryID    string `json:"category_id"`
+	Title         string `json:"title"`
 	Content       string `json:"content" binding:"required,max=10000"`
-	Audience      string `json:"audience" binding:"required,oneof=semua guru siswa"`
+	Audience      string `json:"audience"`
 	AttachmentIDs []uint `json:"attachment_ids"`
 }
 
 type UpdateThreadRequest struct {
-	CategoryID    string `json:"category_id" binding:"required,uuid"`
-	Title         string `json:"title" binding:"required,max=120"`
+	CategoryID    string `json:"category_id"`
+	Title         string `json:"title"`
 	Content       string `json:"content" binding:"required,max=10000"`
-	Audience      string `json:"audience" binding:"required,oneof=semua guru siswa"`
+	Audience      string `json:"audience"`
 	AttachmentIDs []uint `json:"attachment_ids"`
 }
-
-

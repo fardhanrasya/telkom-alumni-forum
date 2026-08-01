@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"slices"
+	"strings"
 
 	"anoa.com/telkomalumiforum/internal/entity"
 	attachmentRepo "anoa.com/telkomalumiforum/internal/modules/attachment/repository"
@@ -33,6 +34,7 @@ type Service interface {
 	IncrementView(ctx context.Context, threadID uuid.UUID, userID uuid.UUID) error
 	GetThreadsByUsername(ctx context.Context, currentUserID uuid.UUID, username string, page, limit int) (*commonDto.PaginatedThreadResponse, error)
 	GetTrendingThreads(ctx context.Context, limit int) ([]commonDto.ThreadResponse, error)
+	TrackFeedViews(ctx context.Context, userID uuid.UUID, threadIDs []uuid.UUID) error
 }
 
 type service struct {
@@ -85,26 +87,54 @@ func (s *service) CreateThread(ctx context.Context, userID uuid.UUID, req thread
 		return fmt.Errorf("user not found: %w", apperror.ErrNotFound)
 	}
 
+	// Default Audience
+	if req.Audience == "" {
+		req.Audience = entity.AudienceSemua
+	}
+
 	// 2. Validate Audience
 	if err := s.validateAudienceForRole(user.Role.Name, req.Audience); err != nil {
 		return err
 	}
 
-	categoryID, err := uuid.Parse(req.CategoryID)
-	if err != nil {
-		return fmt.Errorf("invalid category id format: %w", apperror.ErrBadRequest)
+	// Default CategoryID if empty
+	var categoryID *uuid.UUID
+	if req.CategoryID != "" {
+		parsed, err := uuid.Parse(req.CategoryID)
+		if err == nil {
+			cat, err := s.categoryRepo.FindByID(ctx, parsed)
+			if err == nil && cat != nil {
+				categoryID = &cat.ID
+			}
+		}
+	}
+	if categoryID == nil {
+		// Fallback to first available category
+		cats, err := s.categoryRepo.FindAll(ctx, "")
+		if err == nil && len(cats) > 0 {
+			categoryID = &cats[0].ID
+		}
 	}
 
-	category, err := s.categoryRepo.FindByID(ctx, categoryID)
-	if err != nil {
-		return fmt.Errorf("invalid category id: %w", apperror.ErrBadRequest)
+	// Title and Slug generation
+	var slug string
+	if strings.TrimSpace(req.Title) == "" {
+		req.Title = ""
+		plainText := strings.TrimSpace(stripHTMLTags(req.Content))
+		slugBase := plainText
+		if len(slugBase) > 40 {
+			slugBase = slugBase[:40]
+		}
+		if slugBase == "" {
+			slugBase = "post"
+		}
+		slug = s.generateUniqueSlug(ctx, slugBase)
+	} else {
+		slug = s.generateUniqueSlug(ctx, req.Title)
 	}
-
-	// 3. Generate Slug
-	slug := s.generateUniqueSlug(ctx, req.Title)
 
 	thread := &entity.Thread{
-		CategoryID: &category.ID,
+		CategoryID: categoryID,
 		UserID:     userID,
 		Title:      req.Title,
 		Slug:       slug,
@@ -154,7 +184,7 @@ func (s *service) GetAllThreads(ctx context.Context, userID uuid.UUID, filter co
 
 	if len(allowed) > 0 {
 		if filter.Audience != "" {
-			if slices.Contains(allowed, filter.Audience) {
+			if !slices.Contains(allowed, filter.Audience) {
 				return &commonDto.PaginatedThreadResponse{
 					Data: []commonDto.ThreadResponse{},
 					Meta: commonDto.PaginationMeta{
@@ -186,14 +216,22 @@ func (s *service) GetAllThreads(ctx context.Context, userID uuid.UUID, filter co
 	}
 
 	offset := (filter.Page - 1) * filter.Limit
-	threads, total, err := s.threadRepo.FindAll(ctx, categoryID, filter.Search, effectiveAudiences, filter.SortBy, offset, filter.Limit)
+	var currentUserID *uuid.UUID
+	if userID != uuid.Nil {
+		currentUserID = &userID
+	}
+	threads, total, unseenMap, err := s.threadRepo.FindFeedWithFollows(ctx, currentUserID, categoryID, filter.Search, effectiveAudiences, filter.SortBy, offset, filter.Limit)
 	if err != nil {
 		return nil, err
 	}
 
 	var threadResponses []commonDto.ThreadResponse
 	for _, thread := range threads {
-		threadResponses = append(threadResponses, s.buildThreadResponse(ctx, *thread, &userID))
+		resp := s.buildThreadResponse(ctx, *thread, &userID)
+		if unseenMap[thread.ID] {
+			resp.IsFollowedUnseen = true
+		}
+		threadResponses = append(threadResponses, resp)
 	}
 
 	totalPages := int(total) / filter.Limit
@@ -409,4 +447,11 @@ func (s *service) UpdateThread(ctx context.Context, userID uuid.UUID, threadID u
 	}
 
 	return nil
+}
+
+func (s *service) TrackFeedViews(ctx context.Context, userID uuid.UUID, threadIDs []uuid.UUID) error {
+	if userID == uuid.Nil || len(threadIDs) == 0 {
+		return nil
+	}
+	return s.threadRepo.TrackFeedViews(ctx, userID, threadIDs)
 }

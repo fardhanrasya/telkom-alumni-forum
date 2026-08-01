@@ -53,20 +53,21 @@ type CategoryResponse struct {
 }
 
 type ThreadResponse struct {
-	ID           uuid.UUID            `json:"id"`
-	Title        string               `json:"title"`
-	Slug         string               `json:"slug"`
-	Content      string               `json:"content"`
-	CategoryName string               `json:"category_name"`
-	Author       AuthorResponse       `json:"author"`
-	CreatedAt    string               `json:"created_at"`
-	UpdatedAt    string               `json:"updated_at"`
-	ReplyCount   int64                `json:"reply_count"`
-	Views        int                  `json:"views"`
-	ImageURL     *string              `json:"image_url"`
-	Audience     string               `json:"audience"`
-	Attachments  []AttachmentResponse `json:"attachments"`
-	Reactions    ReactionsResponse    `json:"reactions"`
+	ID               uuid.UUID            `json:"id"`
+	Title            string               `json:"title"`
+	Slug             string               `json:"slug"`
+	Content          string               `json:"content"`
+	CategoryName     string               `json:"category_name"`
+	Author           AuthorResponse       `json:"author"`
+	CreatedAt        string               `json:"created_at"`
+	UpdatedAt        string               `json:"updated_at"`
+	ReplyCount       int64                `json:"reply_count"`
+	Views            int                  `json:"views"`
+	ImageURL         *string              `json:"image_url"`
+	Audience         string               `json:"audience"`
+	IsFollowedUnseen bool                 `json:"is_followed_unseen"`
+	Attachments      []AttachmentResponse `json:"attachments"`
+	Reactions        ReactionsResponse    `json:"reactions"`
 }
 
 type AttachmentResponse struct {

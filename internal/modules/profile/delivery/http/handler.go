@@ -27,7 +27,14 @@ func (h *ProfileHandler) GetProfileByUsername(c *gin.Context) {
 		return
 	}
 
-	profile, err := h.profileService.GetProfileByUsername(c.Request.Context(), username)
+	currentUserIDStr := ""
+	if val, exists := c.Get("user_id"); exists {
+		if str, ok := val.(string); ok {
+			currentUserIDStr = str
+		}
+	}
+
+	profile, err := h.profileService.GetProfileByUsername(c.Request.Context(), currentUserIDStr, username)
 	if err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
 		return

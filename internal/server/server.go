@@ -24,6 +24,10 @@ import (
 	categoryRepo "anoa.com/telkomalumiforum/internal/modules/category/repository"
 	categoryService "anoa.com/telkomalumiforum/internal/modules/category/service"
 
+	followHttp "anoa.com/telkomalumiforum/internal/modules/follow/delivery/http"
+	followRepo "anoa.com/telkomalumiforum/internal/modules/follow/repository"
+	followService "anoa.com/telkomalumiforum/internal/modules/follow/service"
+
 	leaderboardHttp "anoa.com/telkomalumiforum/internal/modules/leaderboard/delivery/http"
 	leaderboardRepo "anoa.com/telkomalumiforum/internal/modules/leaderboard/repository"
 	leaderboardService "anoa.com/telkomalumiforum/internal/modules/leaderboard/service"
@@ -101,8 +105,9 @@ func NewServer(db *gorm.DB, redisClient *redis.Client) *Server {
 	adminHandler := adminHttp.NewAdminHandler(adminSvc)
 
 	leaderboardRepo := leaderboardRepo.NewLeaderboardRepository(db)
+	followRepo := followRepo.NewFollowRepository(db)
 
-	profileSvc := profileService.NewProfileService(userRepo, imageStorage, leaderboardRepo)
+	profileSvc := profileService.NewProfileService(userRepo, imageStorage, leaderboardRepo, followRepo)
 	profileHandler := profileHttp.NewProfileHandler(profileSvc)
 
 	categoryRepo := categoryRepo.NewCategoryRepository(db)
@@ -117,6 +122,12 @@ func NewServer(db *gorm.DB, redisClient *redis.Client) *Server {
 	notificationRepository := notifRepo.NewNotificationRepository(db)
 	notificationSvc := notifService.NewNotificationService(notificationRepository, redisClient)
 	notificationHandler := notiHttp.NewNotificationHandler(notificationSvc, redisClient)
+
+	// Follow Module
+	followSvc := followService.NewFollowService(followRepo, userRepo, notificationSvc)
+	followHandler := followHttp.NewFollowHandler(followSvc)
+
+	rateLimiter := middleware.NewRateLimiter(redisClient)
 
 	threadRepo := threadRepo.NewRepository(db)
 	postRepo := postRepo.NewPostRepository(db)
@@ -149,15 +160,11 @@ func NewServer(db *gorm.DB, redisClient *redis.Client) *Server {
 
 	// Start AI Agent Scheduler
 	if redisClient != nil {
-		// Initialize Agent Scheduler
 		scheduler := agent.NewScheduler()
-
-		// Initialize LLM Provider (Gemini)
 		llmProvider, err := providers.NewGeminiProvider(context.Background(), "")
 		if err != nil {
 			log.Printf("⚠️ Failed to initialize LLM provider: %v. NewsThreadAgent will not be registered.", err)
 		} else {
-			// Create & Register NewsThreadAgent
 			newsAgent := agents.NewNewsThreadAgent(
 				threadSvc,
 				userRepo,
@@ -168,20 +175,12 @@ func NewServer(db *gorm.DB, redisClient *redis.Client) *Server {
 			)
 			scheduler.RegisterAgent(newsAgent)
 		}
-
-		// Start the scheduler
 		scheduler.Start()
 		log.Printf("🤖 Agent system initialized with %d agent(s)", len(scheduler.GetRegisteredAgents()))
-
-		// TODO: Register more agents here in the future
-		// Example:
-		// digestAgent := agents.NewDigestAgent(...)
-		// scheduler.RegisterAgent(digestAgent)
 	}
 
 	// Start Orphan Cleanup Job (Background)
 	go func() {
-		// Run every 12 hours
 		ticker := time.NewTicker(12 * time.Hour)
 		defer ticker.Stop()
 
@@ -231,6 +230,7 @@ func NewServer(db *gorm.DB, redisClient *redis.Client) *Server {
 		publicRead.GET("/profile/:username", profileHandler.GetProfileByUsername)
 		publicRead.GET("/reactions/:refType/:refID", reactionHandler.GetReactions)
 		publicRead.GET("/leaderboard", leaderboardHandler.GetLeaderboard)
+		publicRead.GET("/users/:username/follow-status", followHandler.GetFollowStatus)
 	}
 
 	// Protected routes (require valid JWT token)
@@ -251,12 +251,17 @@ func NewServer(db *gorm.DB, redisClient *redis.Client) *Server {
 
 		// Protected Thread & Post actions
 		protected.POST("/threads", threadHandler.CreateThread)
+		protected.POST("/threads/track-views", threadHandler.TrackFeedViews)
 		protected.GET("/threads/me", threadHandler.GetMyThreads)
 		protected.PUT("/threads/:thread_id", threadHandler.UpdateThread)
 		protected.DELETE("/threads/:thread_id", threadHandler.DeleteThread)
 		protected.POST("/threads/:thread_id/posts", postHandler.CreatePost)
 		protected.PUT("/posts/:post_id", postHandler.UpdatePost)
 		protected.DELETE("/posts/:post_id", postHandler.DeletePost)
+
+		// Protected Follow actions (with rate limiting max 15/min)
+		protected.POST("/users/:username/follow", rateLimiter.Limit("follow", 15, time.Minute), followHandler.ToggleFollow)
+		protected.DELETE("/users/:username/follow", rateLimiter.Limit("follow", 15, time.Minute), followHandler.ToggleFollow)
 
 		// Protected Profile actions
 		protected.GET("/profile/me", profileHandler.GetCurrentProfile)

@@ -22,6 +22,8 @@ func Migrate(db *gorm.DB) error {
 		&entity.PointLog{},
 		&entity.UserStats{},
 		&entity.Reaction{},
+		&entity.UserFollow{},
+		&entity.ThreadFeedView{},
 	)
 }
 

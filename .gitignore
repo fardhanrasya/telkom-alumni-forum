@@ -44,5 +44,6 @@ coverage.txt
 dist/
 tmp/
 *.sql
+scratch/
 
 feat-docs

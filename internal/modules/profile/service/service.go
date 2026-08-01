@@ -7,19 +7,21 @@ import (
 	"strings"
 
 	"anoa.com/telkomalumiforum/internal/entity"
+	followRepo "anoa.com/telkomalumiforum/internal/modules/follow/repository"
 	leaderboardRepo "anoa.com/telkomalumiforum/internal/modules/leaderboard/repository"
 	leaderboard "anoa.com/telkomalumiforum/internal/modules/leaderboard/service"
 	profileDto "anoa.com/telkomalumiforum/internal/modules/profile/dto"
 	userRepo "anoa.com/telkomalumiforum/internal/modules/user/repository"
 	commonDto "anoa.com/telkomalumiforum/pkg/dto"
 	"anoa.com/telkomalumiforum/pkg/storage"
+	"github.com/google/uuid"
 	"golang.org/x/crypto/bcrypt"
 	"gorm.io/gorm"
 )
 
 type ProfileService interface {
 	UpdateProfile(ctx context.Context, userID string, input profileDto.UpdateProfileInput, avatar *commonDto.AvatarFile) (*profileDto.UpdateProfileResponse, error)
-	GetProfileByUsername(ctx context.Context, username string) (*profileDto.PublicProfileResponse, error)
+	GetProfileByUsername(ctx context.Context, currentUserIDStr string, username string) (*profileDto.PublicProfileResponse, error)
 	GetCurrentProfile(ctx context.Context, userID string) (*profileDto.UpdateProfileResponse, error)
 }
 
@@ -27,13 +29,20 @@ type profileService struct {
 	repo            userRepo.UserRepository
 	imageStorage    storage.ImageStorage
 	leaderboardRepo leaderboardRepo.LeaderboardRepository
+	followRepo      followRepo.FollowRepository
 }
 
-func NewProfileService(repo userRepo.UserRepository, imageStorage storage.ImageStorage, leaderboardRepo leaderboardRepo.LeaderboardRepository) ProfileService {
+func NewProfileService(
+	repo userRepo.UserRepository,
+	imageStorage storage.ImageStorage,
+	leaderboardRepo leaderboardRepo.LeaderboardRepository,
+	followRepo followRepo.FollowRepository,
+) ProfileService {
 	return &profileService{
 		repo:            repo,
 		imageStorage:    imageStorage,
 		leaderboardRepo: leaderboardRepo,
+		followRepo:      followRepo,
 	}
 }
 
@@ -90,40 +99,10 @@ func (s *profileService) UpdateProfile(ctx context.Context, userID string, input
 		return nil, err
 	}
 
-	updatedUser, err := s.repo.FindByID(ctx, userID)
-	if err != nil {
-		return nil, err
-	}
-
-	updatedUser.PasswordHash = ""
-
-	// Get gamification stats
-	var allTimeScore, weeklyScore int
-	if s.leaderboardRepo != nil {
-		stats, err := s.leaderboardRepo.GetUserStatsByUserID(updatedUser.ID)
-		if err == nil && stats != nil {
-			allTimeScore = stats.TotalScoreAllTime
-			weeklyScore = stats.TotalScoreWeekly
-		}
-	}
-	gamificationStatus := leaderboard.GetGamificationStatusWithWeekly(allTimeScore, weeklyScore)
-
-	return &profileDto.UpdateProfileResponse{
-		User:    updatedUser,
-		Profile: updatedUser.Profile,
-		GamificationStatus: commonDto.GamificationStatus{
-			RankName:      gamificationStatus.RankName,
-			NextRank:      gamificationStatus.NextRank,
-			CurrentPoints: gamificationStatus.CurrentPoints,
-			TargetPoints:  gamificationStatus.TargetPoints,
-			Progress:      gamificationStatus.Progress,
-			WeeklyPoints:  gamificationStatus.WeeklyPoints,
-			WeeklyLabel:   gamificationStatus.WeeklyLabel,
-		},
-	}, nil
+	return s.GetCurrentProfile(ctx, userID)
 }
 
-func (s *profileService) GetProfileByUsername(ctx context.Context, username string) (*profileDto.PublicProfileResponse, error) {
+func (s *profileService) GetProfileByUsername(ctx context.Context, currentUserIDStr string, username string) (*profileDto.PublicProfileResponse, error) {
 	user, err := s.repo.FindByUsername(ctx, username)
 	if err != nil {
 		return nil, errors.New("user not found")
@@ -139,14 +118,29 @@ func (s *profileService) GetProfileByUsername(ctx context.Context, username stri
 		}
 	}
 
-	// Calculate gamification status
 	gamificationStatus := leaderboard.GetGamificationStatusWithWeekly(allTimeScore, weeklyScore)
 
+	var followersCount, followingCount int64
+	isFollowing := false
+	if s.followRepo != nil {
+		followersCount, _ = s.followRepo.GetFollowersCount(ctx, user.ID)
+		followingCount, _ = s.followRepo.GetFollowingCount(ctx, user.ID)
+
+		if currentUserIDStr != "" {
+			if currentID, err := uuid.Parse(currentUserIDStr); err == nil {
+				isFollowing, _ = s.followRepo.IsFollowing(ctx, currentID, user.ID)
+			}
+		}
+	}
+
 	response := &profileDto.PublicProfileResponse{
-		Username:  user.Username,
-		Role:      user.Role.Name,
-		AvatarURL: user.AvatarURL,
-		CreatedAt: user.CreatedAt,
+		Username:       user.Username,
+		Role:           user.Role.Name,
+		AvatarURL:      user.AvatarURL,
+		CreatedAt:      user.CreatedAt,
+		FollowersCount: followersCount,
+		FollowingCount: followingCount,
+		IsFollowing:    isFollowing,
 		GamificationStatus: commonDto.GamificationStatus{
 			RankName:      gamificationStatus.RankName,
 			NextRank:      gamificationStatus.NextRank,
@@ -185,9 +179,17 @@ func (s *profileService) GetCurrentProfile(ctx context.Context, userID string) (
 	}
 	gamificationStatus := leaderboard.GetGamificationStatusWithWeekly(allTimeScore, weeklyScore)
 
+	var followersCount, followingCount int64
+	if s.followRepo != nil {
+		followersCount, _ = s.followRepo.GetFollowersCount(ctx, user.ID)
+		followingCount, _ = s.followRepo.GetFollowingCount(ctx, user.ID)
+	}
+
 	return &profileDto.UpdateProfileResponse{
-		User:    user,
-		Profile: user.Profile,
+		User:           user,
+		Profile:        user.Profile,
+		FollowersCount: followersCount,
+		FollowingCount: followingCount,
 		GamificationStatus: commonDto.GamificationStatus{
 			RankName:      gamificationStatus.RankName,
 			NextRank:      gamificationStatus.NextRank,

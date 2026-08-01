@@ -1,3 +1,5 @@
+// ALL DONE
+
 Ini adalah **Grand Plan Refactoring** untuk mengubah arsitektur aplikasi kamu dari **Layered Architecture** (Technical grouping) menjadi **Vertical Slice / Domain Driven** (Feature grouping).
 
 Tujuan akhirnya adalah *High Cohesion, Low Coupling*. Saat kamu mau edit fitur "Menfess", kamu cuma buka satu folder, nggak perlu lompat-lompat dari `handler` ke `repo` ke `dto`.

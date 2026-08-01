@@ -19,6 +19,8 @@ type UpdateProfileResponse struct {
 	User               *entity.User                 `json:"user"`
 	Profile            *entity.Profile              `json:"profile"`
 	GamificationStatus commonDto.GamificationStatus `json:"gamification_status"`
+	FollowersCount     int64                        `json:"followers_count"`
+	FollowingCount     int64                        `json:"following_count"`
 }
 
 // PublicProfileResponse is returned when viewing another user's public profile
@@ -30,4 +32,7 @@ type PublicProfileResponse struct {
 	Angkatan           *string                      `json:"angkatan,omitempty"`
 	Bio                *string                      `json:"bio,omitempty"`
 	GamificationStatus commonDto.GamificationStatus `json:"gamification_status"`
+	FollowersCount     int64                        `json:"followers_count"`
+	FollowingCount     int64                        `json:"following_count"`
+	IsFollowing        bool                         `json:"is_following"`
 }

@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"log"
 	"os"
 	"strconv"
@@ -89,6 +90,7 @@ func (s *authService) Login(ctx context.Context, input dto.LoginInput) (*dto.Aut
 	}
 
 	if err := bcrypt.CompareHashAndPassword([]byte(user.PasswordHash), []byte(input.Password)); err != nil {
+		fmt.Printf("Login bcrypt compare failed for email %s: hash=%s err=%v\n", input.Email, user.PasswordHash, err)
 		return nil, errors.New("invalid credentials")
 	}
 

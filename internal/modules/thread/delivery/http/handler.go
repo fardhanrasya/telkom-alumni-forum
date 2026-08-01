@@ -202,3 +202,33 @@ func (h *ThreadHandler) GetThreadsByUsername(c *gin.Context) {
 
 	c.JSON(http.StatusOK, threads)
 }
+
+func (h *ThreadHandler) TrackFeedViews(c *gin.Context) {
+	userID, err := response.GetUserID(c)
+	if err != nil {
+		response.ResponseError(c, err)
+		return
+	}
+
+	var req struct {
+		ThreadIDs []string `json:"thread_ids" binding:"required"`
+	}
+
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	var uuids []uuid.UUID
+	for _, idStr := range req.ThreadIDs {
+		if id, err := uuid.Parse(idStr); err == nil {
+			uuids = append(uuids, id)
+		}
+	}
+
+	if len(uuids) > 0 {
+		_ = h.service.TrackFeedViews(c.Request.Context(), userID, uuids)
+	}
+
+	c.JSON(http.StatusOK, gin.H{"message": "feed views tracked"})
+}
