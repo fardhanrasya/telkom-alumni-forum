@@ -16,6 +16,11 @@ type TransactionResponse struct {
 	CreatedAt    time.Time `json:"created_at"`
 }
 
+type AdminGrantRequest struct {
+	Username string `json:"username" binding:"required"`
+	Amount   int    `json:"amount" binding:"required,min=1"`
+}
+
 type TransactionListResponse struct {
 	Data []TransactionResponse `json:"data"`
 	Meta struct {

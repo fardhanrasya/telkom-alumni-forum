@@ -2,7 +2,10 @@ package service
 
 import (
 	"context"
+	"fmt"
+	"time"
 
+	userRepo "anoa.com/telkomalumiforum/internal/modules/user/repository"
 	walletDto "anoa.com/telkomalumiforum/internal/modules/wallet/dto"
 	walletRepo "anoa.com/telkomalumiforum/internal/modules/wallet/repository"
 	"github.com/google/uuid"
@@ -26,14 +29,20 @@ type WalletService interface {
 	// (SourceType, SourceRefID) — calling twice with the same key is a no-op.
 	Grant(ctx context.Context, req CoinGrantRequest) error
 	GetTransactions(ctx context.Context, userID uuid.UUID, limit, offset int) (*walletDto.TransactionListResponse, error)
+	// AdminGrant is the admin-facing entry point onto the CoinGrant contract
+	// (the "admin_grant" SourceType named in the spec but not wired to any
+	// endpoint until now). Resolves username -> userID, then grants through
+	// the same idempotent ledger path as everything else.
+	AdminGrant(ctx context.Context, username string, amount int) (*walletDto.WalletResponse, error)
 }
 
 type walletService struct {
-	repo walletRepo.WalletRepository
+	repo     walletRepo.WalletRepository
+	userRepo userRepo.UserRepository
 }
 
-func NewWalletService(repo walletRepo.WalletRepository) WalletService {
-	return &walletService{repo: repo}
+func NewWalletService(repo walletRepo.WalletRepository, userRepo userRepo.UserRepository) WalletService {
+	return &walletService{repo: repo, userRepo: userRepo}
 }
 
 func (s *walletService) GetWallet(ctx context.Context, userID uuid.UUID) (*walletDto.WalletResponse, error) {
@@ -50,6 +59,25 @@ func (s *walletService) Grant(ctx context.Context, req CoinGrantRequest) error {
 		_, err := s.repo.WithTx(tx).ApplyLedgerEntry(tx, req.UserID, req.Amount, req.SourceType, req.SourceRefID)
 		return err
 	})
+}
+
+func (s *walletService) AdminGrant(ctx context.Context, username string, amount int) (*walletDto.WalletResponse, error) {
+	user, err := s.userRepo.FindByUsername(ctx, username)
+	if err != nil {
+		return nil, err
+	}
+
+	sourceRefID := fmt.Sprintf("%s:%d", user.ID, time.Now().UnixNano())
+	if err := s.Grant(ctx, CoinGrantRequest{
+		UserID:      user.ID,
+		Amount:      amount,
+		SourceType:  "admin_grant",
+		SourceRefID: sourceRefID,
+	}); err != nil {
+		return nil, err
+	}
+
+	return s.GetWallet(ctx, user.ID)
 }
 
 func (s *walletService) GetTransactions(ctx context.Context, userID uuid.UUID, limit, offset int) (*walletDto.TransactionListResponse, error) {

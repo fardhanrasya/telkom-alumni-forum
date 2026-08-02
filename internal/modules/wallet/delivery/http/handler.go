@@ -4,8 +4,10 @@ import (
 	"net/http"
 	"strconv"
 
+	walletDto "anoa.com/telkomalumiforum/internal/modules/wallet/dto"
 	walletService "anoa.com/telkomalumiforum/internal/modules/wallet/service"
 	"anoa.com/telkomalumiforum/pkg/response"
+	"anoa.com/telkomalumiforum/pkg/validator"
 	"github.com/gin-gonic/gin"
 )
 
@@ -50,4 +52,20 @@ func (h *WalletHandler) GetTransactions(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, transactions)
+}
+
+func (h *WalletHandler) AdminGrant(c *gin.Context) {
+	var req walletDto.AdminGrantRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": validator.FormatValidationError(err)})
+		return
+	}
+
+	wallet, err := h.service.AdminGrant(c.Request.Context(), req.Username, req.Amount)
+	if err != nil {
+		response.ResponseError(c, err)
+		return
+	}
+
+	c.JSON(http.StatusOK, wallet)
 }

@@ -126,7 +126,7 @@ func NewServer(db *gorm.DB, redisClient *redis.Client) *Server {
 	// Wallet & Mission Modules (coin ledger + mission engine, no dependency
 	// on leaderboard/follow so they're wired first)
 	walletRepository := walletRepo.NewWalletRepository(db)
-	walletSvc := walletService.NewWalletService(walletRepository)
+	walletSvc := walletService.NewWalletService(walletRepository, userRepo)
 	walletHandler := walletHttp.NewWalletHandler(walletSvc)
 
 	missionRepository := missionRepo.NewMissionRepository(db)
@@ -287,6 +287,7 @@ func NewServer(db *gorm.DB, redisClient *redis.Client) *Server {
 			adminGroup.DELETE("/users/:id", adminHandler.DeleteUser)
 			adminGroup.POST("/categories", categoryHandler.CreateCategory)
 			adminGroup.DELETE("/categories/:id", categoryHandler.DeleteCategory)
+			adminGroup.POST("/wallet/grant", walletHandler.AdminGrant)
 			adminGroup.GET("/cosmetics", cosmeticHandler.ListCosmeticsAdmin)
 			adminGroup.POST("/cosmetics", cosmeticHandler.CreateCosmetic)
 			adminGroup.PUT("/cosmetics/:id", cosmeticHandler.UpdateCosmetic)
