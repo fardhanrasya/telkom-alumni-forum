@@ -57,12 +57,19 @@ type NewsThreadConfig struct {
 
 	// RedisKeyPrefix adalah prefix untuk Redis key tracking
 	RedisKeyPrefix string
+
+	// MaxPostsPerDay adalah plafon thread yang boleh diposting bot per hari
+	// (WIB), lintas semua feed dan lintas semua run cron hari itu — bukan
+	// per-feed atau per-run. Ditegakkan lewat Redis, sama pola dengan
+	// MaxDailyThreadPoints di leaderboard: cegah spam kalau cron jalan lebih
+	// dari sekali sehari atau ada beberapa feed yang sama-sama punya item baru.
+	MaxPostsPerDay int
 }
 
 // DefaultNewsThreadConfig mengembalikan konfigurasi default
 func DefaultNewsThreadConfig() NewsThreadConfig {
 	return NewsThreadConfig{
-		Schedule:            "0 7,19 * * *", // 7 AM & 7 PM
+		Schedule:            "0 8 * * *", // sekali sehari, jam 8 pagi WIB
 		BotUsername:         "Mading_Bot",
 		PreferredCategories: []string{"Teknologi", "Berita", "Umum"},
 		RSSFeeds: []string{
@@ -72,7 +79,17 @@ func DefaultNewsThreadConfig() NewsThreadConfig {
 		MinContentLength:  100,
 		DelayBetweenPosts: 10 * time.Second,
 		RedisKeyPrefix:    "agent:news_thread",
+		MaxPostsPerDay:    1,
 	}
+}
+
+var newsAgentWIB = time.FixedZone("WIB", 7*3600)
+
+// postsTodayKey is the Redis counter key for MaxPostsPerDay, scoped to the
+// current WIB calendar date — same WIB-midnight rollover as daily missions,
+// not UTC.
+func (a *NewsThreadAgent) postsTodayKey() string {
+	return fmt.Sprintf("%s:posts:%s", a.config.RedisKeyPrefix, time.Now().In(newsAgentWIB).Format("2006-01-02"))
 }
 
 // NewNewsThreadAgent membuat instance NewsThreadAgent baru
@@ -110,6 +127,21 @@ func (a *NewsThreadAgent) GetSchedule() string {
 func (a *NewsThreadAgent) Execute(ctx context.Context) error {
 	log.Printf("[%s] Starting execution...", a.GetName())
 
+	dailyCap := a.config.MaxPostsPerDay
+	if dailyCap <= 0 {
+		dailyCap = 1
+	}
+
+	postedToday, err := a.redis.Get(ctx, a.postsTodayKey()).Int()
+	if err != nil && err != redis.Nil {
+		return fmt.Errorf("failed to read daily post count: %w", err)
+	}
+	remaining := dailyCap - postedToday
+	if remaining <= 0 {
+		log.Printf("[%s] Daily cap (%d) already reached, skipping run", a.GetName(), dailyCap)
+		return nil
+	}
+
 	// 1. Get bot user
 	botUser, err := a.userRepo.FindByUsername(ctx, a.config.BotUsername)
 	if err != nil {
@@ -122,15 +154,20 @@ func (a *NewsThreadAgent) Execute(ctx context.Context) error {
 		return fmt.Errorf("failed to get target category: %w", err)
 	}
 
-	// 3. Process RSS feeds
+	// 3. Process RSS feeds, stopping as soon as the daily cap is hit —
+	// across all feeds and all runs today, not per-feed or per-run.
 	totalProcessed := 0
 	for _, feedURL := range a.config.RSSFeeds {
-		processed, err := a.processFeed(ctx, feedURL, botUser.ID, targetCategoryID)
+		if remaining <= 0 {
+			break
+		}
+		processed, err := a.processFeed(ctx, feedURL, botUser.ID, targetCategoryID, remaining)
 		if err != nil {
 			log.Printf("[%s] Error processing feed %s: %v", a.GetName(), feedURL, err)
 			continue
 		}
 		totalProcessed += processed
+		remaining -= processed
 	}
 
 	log.Printf("[%s] Execution completed. Total threads created: %d", a.GetName(), totalProcessed)
@@ -161,8 +198,8 @@ func (a *NewsThreadAgent) getTargetCategory(ctx context.Context) (uuid.UUID, err
 	return uuid.Nil, fmt.Errorf("no categories available")
 }
 
-// processFeed memproses satu RSS feed
-func (a *NewsThreadAgent) processFeed(ctx context.Context, feedURL string, botUserID, categoryID uuid.UUID) (int, error) {
+// processFeed memproses satu RSS feed, berhenti begitu budget habis
+func (a *NewsThreadAgent) processFeed(ctx context.Context, feedURL string, botUserID, categoryID uuid.UUID, budget int) (int, error) {
 	log.Printf("[%s] Processing feed: %s", a.GetName(), feedURL)
 
 	// Fetch RSS items
@@ -173,6 +210,10 @@ func (a *NewsThreadAgent) processFeed(ctx context.Context, feedURL string, botUs
 
 	processedCount := 0
 	for _, item := range items {
+		if processedCount >= budget {
+			break
+		}
+
 		// Check if already processed
 		redisKey := fmt.Sprintf("%s:processed_urls", a.config.RedisKeyPrefix)
 		isProcessed, err := a.redis.SIsMember(ctx, redisKey, item.Link).Result()
@@ -187,6 +228,11 @@ func (a *NewsThreadAgent) processFeed(ctx context.Context, feedURL string, botUs
 		}
 
 		processedCount++
+
+		// Count this post against the daily cap, valid ~26h so a run just
+		// before WIB midnight still expires into the next day's key.
+		a.redis.Incr(ctx, a.postsTodayKey())
+		a.redis.Expire(ctx, a.postsTodayKey(), 26*time.Hour)
 
 		// Rate limiting
 		time.Sleep(a.config.DelayBetweenPosts)
