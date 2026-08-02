@@ -18,6 +18,11 @@ type MissionRepository interface {
 	// IncrementProgress upserts a progress row, adding delta and capping at
 	// cap (the mission's target) so an over-fire never over-counts.
 	IncrementProgress(ctx context.Context, userID uuid.UUID, missionID uint, period string, delta, cap int) error
+	// SetProgress upserts a progress row to an absolute value (clamped to
+	// [0, cap]), unlike IncrementProgress's additive accumulation. Needed
+	// for streak-style missions where progress can legitimately go down
+	// (a broken streak), which an additive counter could never express.
+	SetProgress(ctx context.Context, userID uuid.UUID, missionID uint, period string, value, cap int) error
 	// GetProgressForUpdate locks the progress row (creating it at 0 if
 	// missing) for the claim transaction.
 	GetProgressForUpdate(tx *gorm.DB, userID uuid.UUID, missionID uint, period string) (*entity.MissionProgress, error)
@@ -87,6 +92,26 @@ func (r *missionRepository) IncrementProgress(ctx context.Context, userID uuid.U
 		MissionID: missionID,
 		Period:    period,
 		Progress:  initial,
+	}).Error
+}
+
+func (r *missionRepository) SetProgress(ctx context.Context, userID uuid.UUID, missionID uint, period string, value, cap int) error {
+	if value > cap {
+		value = cap
+	}
+	if value < 0 {
+		value = 0
+	}
+	return r.db.WithContext(ctx).Clauses(clause.OnConflict{
+		Columns: []clause.Column{{Name: "user_id"}, {Name: "mission_id"}, {Name: "period"}},
+		DoUpdates: clause.Assignments(map[string]interface{}{
+			"progress": value,
+		}),
+	}).Create(&entity.MissionProgress{
+		UserID:    userID,
+		MissionID: missionID,
+		Period:    period,
+		Progress:  value,
 	}).Error
 }
 

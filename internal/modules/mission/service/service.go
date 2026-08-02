@@ -26,6 +26,13 @@ type MissionService interface {
 	// leaderboard.AddGamificationPointsAsync — called after the source
 	// action (create_thread, like_received, ...) has already succeeded.
 	RecordProgressAsync(userID uuid.UUID, actionType string, amount int)
+	// RecordLoginStreak updates every active "login_streak" mission for a
+	// user's current streak length. Daily missions (target=1, "login hari
+	// ini") get a plain increment — already-1-today is a harmless capped
+	// no-op. Achievement missions (streak length thresholds) get their
+	// progress SET to currentStreak rather than accumulated, since a broken
+	// streak must be able to go back down — an additive counter never could.
+	RecordLoginStreak(userID uuid.UUID, currentStreak int)
 	GetMissions(ctx context.Context, userID uuid.UUID) ([]missionDto.MissionResponse, error)
 	Claim(ctx context.Context, userID uuid.UUID, missionID uint) (*missionDto.ClaimResponse, error)
 }
@@ -54,6 +61,32 @@ func (s *missionService) RecordProgressAsync(userID uuid.UUID, actionType string
 			period := PeriodFor(def.Kind, now)
 			if err := s.repo.IncrementProgress(ctx, userID, def.ID, period, amount, def.Target); err != nil {
 				log.Printf("Failed to record mission progress (user=%s mission=%d period=%s): %v", userID, def.ID, period, err)
+			}
+		}
+	}()
+}
+
+func (s *missionService) RecordLoginStreak(userID uuid.UUID, currentStreak int) {
+	go func() {
+		ctx := context.Background()
+
+		defs, err := s.repo.GetActiveDefinitionsByActionType(ctx, "login_streak")
+		if err != nil {
+			log.Printf("Failed to load login_streak mission definitions: %v", err)
+			return
+		}
+
+		now := time.Now()
+		for _, def := range defs {
+			period := PeriodFor(def.Kind, now)
+			var err error
+			if def.Kind == "daily" {
+				err = s.repo.IncrementProgress(ctx, userID, def.ID, period, 1, def.Target)
+			} else {
+				err = s.repo.SetProgress(ctx, userID, def.ID, period, currentStreak, def.Target)
+			}
+			if err != nil {
+				log.Printf("Failed to record login streak progress (user=%s mission=%d period=%s): %v", userID, def.ID, period, err)
 			}
 		}
 	}()

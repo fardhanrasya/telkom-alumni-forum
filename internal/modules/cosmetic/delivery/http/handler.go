@@ -31,6 +31,15 @@ func (h *CosmeticHandler) GetCatalog(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"data": catalog})
 }
 
+func (h *CosmeticHandler) ListCosmeticsAdmin(c *gin.Context) {
+	catalog, err := h.service.GetAllForAdmin(c.Request.Context())
+	if err != nil {
+		response.ResponseError(c, err)
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"data": catalog})
+}
+
 func (h *CosmeticHandler) GetUserCosmetics(c *gin.Context) {
 	username := c.Param("username")
 	equip, err := h.service.GetUserCosmeticsByUsername(c.Request.Context(), username)

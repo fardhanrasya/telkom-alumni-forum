@@ -48,6 +48,7 @@ type CosmeticService interface {
 
 	CreateCosmetic(ctx context.Context, input cosmeticDto.AdminCosmeticInput, animated, static *commonDto.AvatarFile) (*cosmeticDto.CosmeticResponse, error)
 	UpdateCosmetic(ctx context.Context, id uint, input cosmeticDto.AdminCosmeticInput, animated, static *commonDto.AvatarFile) (*cosmeticDto.CosmeticResponse, error)
+	GetAllForAdmin(ctx context.Context) ([]cosmeticDto.CosmeticResponse, error)
 }
 
 type cosmeticService struct {
@@ -88,6 +89,18 @@ func toEquipResponse(equip *entity.UserEquip) *cosmeticDto.EquipResponse {
 
 func (s *cosmeticService) GetCatalog(ctx context.Context) ([]cosmeticDto.CosmeticResponse, error) {
 	cosmetics, err := s.repo.GetPublishedCatalog(ctx)
+	if err != nil {
+		return nil, err
+	}
+	responses := make([]cosmeticDto.CosmeticResponse, 0, len(cosmetics))
+	for i := range cosmetics {
+		responses = append(responses, toCosmeticResponse(&cosmetics[i]))
+	}
+	return responses, nil
+}
+
+func (s *cosmeticService) GetAllForAdmin(ctx context.Context) ([]cosmeticDto.CosmeticResponse, error) {
+	cosmetics, err := s.repo.GetAll(ctx)
 	if err != nil {
 		return nil, err
 	}

@@ -31,27 +31,30 @@ func Migrate(db *gorm.DB) error {
 		&entity.UserEquip{},
 		&entity.MissionDefinition{},
 		&entity.MissionProgress{},
+		&entity.LoginStreak{},
 	)
 }
 
 // SeedMissionDefinitions inserts the initial mission catalog described in
-// docs/SPEC-cosmetics-economy.md §4.1. view_thread and login_streak are
-// seeded inactive: they need per-user-per-day view tracking and a
-// last_active_date/streak column that don't exist yet — separate tickets.
+// docs/SPEC-cosmetics-economy.md §4.1. view_thread stays inactive: it needs
+// per-user-per-day view tracking that doesn't exist yet. login_streak is
+// active — backed by entity.LoginStreak and POST /activity/heartbeat.
 func SeedMissionDefinitions(db *gorm.DB) error {
 	missions := []entity.MissionDefinition{
 		{ActionType: "create_thread", Kind: "daily", Name: "Buat 1 thread", Target: 1, Reward: 10, IsActive: true},
 		{ActionType: "like_received", Kind: "daily", Name: "Dapat 3 like", Target: 3, Reward: 10, IsActive: true},
 		{ActionType: "comment_received", Kind: "daily", Name: "Dapat 3 komentar", Target: 3, Reward: 10, IsActive: true},
 		{ActionType: "view_thread", Kind: "daily", Name: "Baca 5 thread berbeda", Target: 5, Reward: 5, IsActive: false},
-		{ActionType: "login_streak", Kind: "daily", Name: "Login hari ini", Target: 1, Reward: 5, IsActive: false},
+		{ActionType: "login_streak", Kind: "daily", Name: "Login hari ini", Target: 1, Reward: 5, IsActive: true},
 		{ActionType: "follow", Kind: "achievement", Name: "Follow 10 pengguna", Target: 10, Reward: 50, IsActive: true},
+		{ActionType: "login_streak", Kind: "achievement", Name: "Login streak 7 hari", Target: 7, Reward: 75, IsActive: true},
+		{ActionType: "login_streak", Kind: "achievement", Name: "Login streak 30 hari", Target: 30, Reward: 150, IsActive: true},
 	}
 
 	for _, m := range missions {
 		var count int64
 		if err := db.Model(&entity.MissionDefinition{}).
-			Where("action_type = ? AND kind = ?", m.ActionType, m.Kind).
+			Where("name = ?", m.Name).
 			Count(&count).Error; err != nil {
 			return err
 		}
@@ -60,6 +63,15 @@ func SeedMissionDefinitions(db *gorm.DB) error {
 				return err
 			}
 		}
+	}
+
+	// login_streak's daily mission was seeded inactive before entity.LoginStreak
+	// and POST /activity/heartbeat existed; flip it on for installs that
+	// already ran the seed above once with the old inactive default.
+	if err := db.Model(&entity.MissionDefinition{}).
+		Where("name = ?", "Login hari ini").
+		Update("is_active", true).Error; err != nil {
+		return err
 	}
 
 	return nil

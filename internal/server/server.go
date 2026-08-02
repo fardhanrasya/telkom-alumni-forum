@@ -13,6 +13,10 @@ import (
 	"anoa.com/telkomalumiforum/internal/middleware"
 	"anoa.com/telkomalumiforum/pkg/storage"
 
+	activityHttp "anoa.com/telkomalumiforum/internal/modules/activity/delivery/http"
+	activityRepo "anoa.com/telkomalumiforum/internal/modules/activity/repository"
+	activityService "anoa.com/telkomalumiforum/internal/modules/activity/service"
+
 	adminHttp "anoa.com/telkomalumiforum/internal/modules/admin/delivery/http"
 	adminService "anoa.com/telkomalumiforum/internal/modules/admin/service"
 
@@ -128,6 +132,10 @@ func NewServer(db *gorm.DB, redisClient *redis.Client) *Server {
 	missionRepository := missionRepo.NewMissionRepository(db)
 	missionSvc := missionService.NewMissionService(missionRepository, walletRepository)
 	missionHandler := missionHttp.NewMissionHandler(missionSvc)
+
+	activityRepository := activityRepo.NewActivityRepository(db)
+	activitySvc := activityService.NewActivityService(activityRepository, missionSvc)
+	activityHandler := activityHttp.NewActivityHandler(activitySvc)
 
 	// Cosmetic Module (catalog/purchase/equip)
 	cosmeticRepository := cosmeticRepo.NewCosmeticRepository(db)
@@ -279,6 +287,7 @@ func NewServer(db *gorm.DB, redisClient *redis.Client) *Server {
 			adminGroup.DELETE("/users/:id", adminHandler.DeleteUser)
 			adminGroup.POST("/categories", categoryHandler.CreateCategory)
 			adminGroup.DELETE("/categories/:id", categoryHandler.DeleteCategory)
+			adminGroup.GET("/cosmetics", cosmeticHandler.ListCosmeticsAdmin)
 			adminGroup.POST("/cosmetics", cosmeticHandler.CreateCosmetic)
 			adminGroup.PUT("/cosmetics/:id", cosmeticHandler.UpdateCosmetic)
 		}
@@ -323,6 +332,9 @@ func NewServer(db *gorm.DB, redisClient *redis.Client) *Server {
 		// Mission routes
 		protected.GET("/missions", missionHandler.GetMissions)
 		protected.POST("/missions/:id/claim", missionHandler.ClaimMission)
+
+		// Activity routes (login streak)
+		protected.POST("/activity/heartbeat", activityHandler.Heartbeat)
 
 		// Cosmetic purchase/inventory/equip routes
 		protected.POST("/cosmetics/:id/purchase", cosmeticHandler.Purchase)

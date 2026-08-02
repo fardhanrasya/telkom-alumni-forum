@@ -14,6 +14,9 @@ var ErrAlreadyOwned = errors.New("kosmetik ini sudah kamu miliki")
 
 type CosmeticRepository interface {
 	GetPublishedCatalog(ctx context.Context) ([]entity.Cosmetic, error)
+	// GetAll returns every cosmetic regardless of status (draft/published/
+	// retired) — admin-only, unlike GetPublishedCatalog.
+	GetAll(ctx context.Context) ([]entity.Cosmetic, error)
 	GetByID(ctx context.Context, id uint) (*entity.Cosmetic, error)
 	Create(ctx context.Context, cosmetic *entity.Cosmetic) error
 	Update(ctx context.Context, cosmetic *entity.Cosmetic) error
@@ -52,6 +55,12 @@ func (r *cosmeticRepository) WithTx(tx *gorm.DB) CosmeticRepository {
 func (r *cosmeticRepository) GetPublishedCatalog(ctx context.Context) ([]entity.Cosmetic, error) {
 	var cosmetics []entity.Cosmetic
 	err := r.db.WithContext(ctx).Where("status = ?", "published").Find(&cosmetics).Error
+	return cosmetics, err
+}
+
+func (r *cosmeticRepository) GetAll(ctx context.Context) ([]entity.Cosmetic, error) {
+	var cosmetics []entity.Cosmetic
+	err := r.db.WithContext(ctx).Order("created_at DESC").Find(&cosmetics).Error
 	return cosmetics, err
 }
 
