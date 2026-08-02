@@ -1,10 +1,14 @@
 package dto
 
-import "github.com/google/uuid"
+import (
+	cosmeticDto "anoa.com/telkomalumiforum/internal/modules/cosmetic/dto"
+	"github.com/google/uuid"
+)
 
 type AuthorResponse struct {
-	Username  string  `json:"username"`
-	AvatarURL *string `json:"avatar_url"`
+	Username  string                     `json:"username"`
+	AvatarURL *string                    `json:"avatar_url"`
+	Equip     *cosmeticDto.EquipResponse `json:"equip,omitempty"`
 }
 
 type CategoryFilter struct {
@@ -82,17 +86,17 @@ type ReactionsResponse struct {
 }
 
 type GamificationStatus struct {
-	RankName      string `json:"rank_name"`
-	NextRank      string `json:"next_rank"`
-	CurrentPoints int    `json:"current_points"`
+	RankName      string  `json:"rank_name"`
+	NextRank      string  `json:"next_rank"`
+	CurrentPoints int     `json:"current_points"`
 	TargetPoints  int     `json:"target_points"`
 	Progress      float64 `json:"progress"` // Percentage
 	WeeklyPoints  int     `json:"weekly_points"`
-	WeeklyLabel   string `json:"weekly_label"`
+	WeeklyLabel   string  `json:"weekly_label"`
 }
 
 type AvatarFile struct {
-	Reader   interface {
+	Reader interface {
 		Read(p []byte) (n int, err error)
 	}
 	FileName string

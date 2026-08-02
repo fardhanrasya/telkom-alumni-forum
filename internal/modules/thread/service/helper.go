@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"anoa.com/telkomalumiforum/internal/entity"
+	cosmeticDto "anoa.com/telkomalumiforum/internal/modules/cosmetic/dto"
 	"anoa.com/telkomalumiforum/pkg/apperror"
 	commonDto "anoa.com/telkomalumiforum/pkg/dto"
 	"anoa.com/telkomalumiforum/pkg/ratelimiter"
@@ -32,6 +33,7 @@ func (s *service) buildThreadResponse(ctx context.Context, thread entity.Thread,
 	if thread.User.Username != "" {
 		authorResponse.Username = thread.User.Username
 		authorResponse.AvatarURL = thread.User.AvatarURL
+		authorResponse.Equip = cosmeticDto.FromEquipEntity(thread.User.Equip)
 	}
 
 	// Fetch reactions

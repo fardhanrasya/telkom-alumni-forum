@@ -1,5 +1,11 @@
 package dto
 
+import (
+	"encoding/json"
+
+	"anoa.com/telkomalumiforum/internal/entity"
+)
+
 // CSSPayload is the Cosmetic.Payload shape when RenderType == "css".
 // PresetKey must match a ring preset registered in FE code — admins don't
 // submit free-form CSS.
@@ -55,4 +61,57 @@ type AdminCosmeticInput struct {
 	MinRank    string `form:"min_rank"`
 	Status     string `form:"status" binding:"omitempty,oneof=draft published retired"`
 	PresetKey  string `form:"preset_key"` // required when render_type=css
+}
+
+// FromCosmeticEntity converts a Cosmetic entity to its API response shape,
+// decoding Payload into the concrete CSSPayload/ImagePayload per RenderType.
+// Shared by the cosmetic module's own responses and by every other module
+// (thread/post/leaderboard) that embeds equipped cosmetics on an author.
+func FromCosmeticEntity(c *entity.Cosmetic) CosmeticResponse {
+	resp := CosmeticResponse{
+		ID:         c.ID,
+		Slot:       c.Slot,
+		SubType:    c.SubType,
+		RenderType: c.RenderType,
+		Name:       c.Name,
+		Price:      c.Price,
+		MinRank:    c.MinRank,
+		Status:     c.Status,
+	}
+	switch c.RenderType {
+	case "css":
+		var p CSSPayload
+		if err := json.Unmarshal(c.Payload, &p); err == nil {
+			resp.Payload = p
+		}
+	case "image":
+		var p ImagePayload
+		if err := json.Unmarshal(c.Payload, &p); err == nil {
+			resp.Payload = p
+		}
+	}
+	return resp
+}
+
+// FromEquipEntity converts a UserEquip entity to its API response shape.
+// Returns nil for a nil input so callers can embed it as an omitempty
+// pointer field without a nil-check at every call site.
+func FromEquipEntity(equip *entity.UserEquip) *EquipResponse {
+	if equip == nil {
+		return nil
+	}
+	resp := &EquipResponse{}
+	if equip.AvatarBorder != nil {
+		r := FromCosmeticEntity(equip.AvatarBorder)
+		resp.AvatarBorder = &r
+	}
+	if equip.ThreadBg != nil {
+		r := FromCosmeticEntity(equip.ThreadBg)
+		resp.ThreadBg = &r
+	}
+	if equip.ProfileBg != nil {
+		r := FromCosmeticEntity(equip.ProfileBg)
+		resp.ProfileBg = &r
+	}
+	return resp
 }

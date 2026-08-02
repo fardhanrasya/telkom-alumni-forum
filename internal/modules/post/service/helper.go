@@ -4,6 +4,7 @@ import (
 	"context"
 
 	"anoa.com/telkomalumiforum/internal/entity"
+	cosmeticDto "anoa.com/telkomalumiforum/internal/modules/cosmetic/dto"
 	postDto "anoa.com/telkomalumiforum/internal/modules/post/dto"
 	"anoa.com/telkomalumiforum/pkg/dto"
 	"github.com/google/uuid"
@@ -25,6 +26,7 @@ func (s *postService) mapToResponse(ctx context.Context, post *entity.Post, user
 	if post.User.Username != "" {
 		authorResponse.Username = post.User.Username
 		authorResponse.AvatarURL = post.User.AvatarURL
+		authorResponse.Equip = cosmeticDto.FromEquipEntity(post.User.Equip)
 	}
 
 	reactions, _ := s.reactionService.GetReactions(ctx, userIDPtr, post.ID, "post")

@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"anoa.com/telkomalumiforum/internal/entity"
+	cosmeticDto "anoa.com/telkomalumiforum/internal/modules/cosmetic/dto"
 	leaderboardDto "anoa.com/telkomalumiforum/internal/modules/leaderboard/dto"
 	leaderboardRepo "anoa.com/telkomalumiforum/internal/modules/leaderboard/repository"
 	missionService "anoa.com/telkomalumiforum/internal/modules/mission/service"
@@ -200,6 +201,7 @@ func (s *leaderboardService) GetLeaderboard(limit int, timeframe string) ([]lead
 			AvatarURL: stat.User.AvatarURL,
 			Role:      role,
 			Position:  i + 1, // 1-based position
+			Equip:     cosmeticDto.FromEquipEntity(stat.User.Equip),
 			GamificationStatus: dto.GamificationStatus{
 				RankName:      gamificationStatus.RankName,
 				NextRank:      gamificationStatus.NextRank,

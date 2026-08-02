@@ -75,44 +75,13 @@ func NewCosmeticService(
 }
 
 func toCosmeticResponse(c *entity.Cosmetic) cosmeticDto.CosmeticResponse {
-	resp := cosmeticDto.CosmeticResponse{
-		ID:         c.ID,
-		Slot:       c.Slot,
-		SubType:    c.SubType,
-		RenderType: c.RenderType,
-		Name:       c.Name,
-		Price:      c.Price,
-		MinRank:    c.MinRank,
-		Status:     c.Status,
-	}
-	switch c.RenderType {
-	case "css":
-		var p cosmeticDto.CSSPayload
-		if err := json.Unmarshal(c.Payload, &p); err == nil {
-			resp.Payload = p
-		}
-	case "image":
-		var p cosmeticDto.ImagePayload
-		if err := json.Unmarshal(c.Payload, &p); err == nil {
-			resp.Payload = p
-		}
-	}
-	return resp
+	return cosmeticDto.FromCosmeticEntity(c)
 }
 
 func toEquipResponse(equip *entity.UserEquip) *cosmeticDto.EquipResponse {
-	resp := &cosmeticDto.EquipResponse{}
-	if equip.AvatarBorder != nil {
-		r := toCosmeticResponse(equip.AvatarBorder)
-		resp.AvatarBorder = &r
-	}
-	if equip.ThreadBg != nil {
-		r := toCosmeticResponse(equip.ThreadBg)
-		resp.ThreadBg = &r
-	}
-	if equip.ProfileBg != nil {
-		r := toCosmeticResponse(equip.ProfileBg)
-		resp.ProfileBg = &r
+	resp := cosmeticDto.FromEquipEntity(equip)
+	if resp == nil {
+		return &cosmeticDto.EquipResponse{}
 	}
 	return resp
 }
