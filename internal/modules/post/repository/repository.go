@@ -44,6 +44,9 @@ func (r *postRepository) FindByID(ctx context.Context, id uuid.UUID) (*entity.Po
 	if err := r.db.WithContext(ctx).
 		Preload("User").
 		Preload("User.Profile").
+		Preload("User.Equip.AvatarBorder").
+		Preload("User.Equip.ThreadBg").
+		Preload("User.Equip.ProfileBg").
 		Preload("Attachments").
 		Preload("Parent").
 		Where("id = ?", id).
@@ -60,6 +63,9 @@ func (r *postRepository) FindByThreadID(ctx context.Context, threadID uuid.UUID,
 	query := r.db.WithContext(ctx).
 		Preload("User").
 		Preload("User.Profile").
+		Preload("User.Equip.AvatarBorder").
+		Preload("User.Equip.ThreadBg").
+		Preload("User.Equip.ProfileBg").
 		Preload("Attachments").
 		Where("thread_id = ?", threadID)
 
@@ -80,6 +86,9 @@ func (r *postRepository) FindAllByThreadID(ctx context.Context, threadID uuid.UU
 	err := r.db.WithContext(ctx).
 		Preload("User").
 		Preload("User.Profile").
+		Preload("User.Equip.AvatarBorder").
+		Preload("User.Equip.ThreadBg").
+		Preload("User.Equip.ProfileBg").
 		Preload("Attachments").
 		Where("thread_id = ?", threadID).
 		Order("created_at ASC").

@@ -43,6 +43,9 @@ func (r *repository) FindBySlug(ctx context.Context, slug string) (*entity.Threa
 		Preload("Category").
 		Preload("User").
 		Preload("User.Profile").
+		Preload("User.Equip.AvatarBorder").
+		Preload("User.Equip.ThreadBg").
+		Preload("User.Equip.ProfileBg").
 		Preload("Attachments").
 		Where("slug = ?", slug).
 		First(&thread).Error; err != nil {
@@ -57,6 +60,9 @@ func (r *repository) FindByID(ctx context.Context, id uuid.UUID) (*entity.Thread
 		Preload("Category").
 		Preload("User").
 		Preload("User.Profile").
+		Preload("User.Equip.AvatarBorder").
+		Preload("User.Equip.ThreadBg").
+		Preload("User.Equip.ProfileBg").
 		Preload("Attachments").
 		Where("id = ?", id).
 		First(&thread).Error; err != nil {
@@ -73,6 +79,9 @@ func (r *repository) FindAll(ctx context.Context, categoryID *uuid.UUID, search 
 		Preload("Category").
 		Preload("User").
 		Preload("User.Profile").
+		Preload("User.Equip.AvatarBorder").
+		Preload("User.Equip.ThreadBg").
+		Preload("User.Equip.ProfileBg").
 		Preload("Attachments")
 
 	if categoryID != nil {
@@ -135,6 +144,9 @@ func (r *repository) FindFeedWithFollows(ctx context.Context, currentUserID *uui
 		Preload("Category").
 		Preload("User").
 		Preload("User.Profile").
+		Preload("User.Equip.AvatarBorder").
+		Preload("User.Equip.ThreadBg").
+		Preload("User.Equip.ProfileBg").
 		Preload("Attachments")
 
 	if categoryID != nil {
@@ -198,6 +210,9 @@ func (r *repository) FindByUserID(ctx context.Context, userID uuid.UUID, audienc
 		Preload("Category").
 		Preload("User").
 		Preload("User.Profile").
+		Preload("User.Equip.AvatarBorder").
+		Preload("User.Equip.ThreadBg").
+		Preload("User.Equip.ProfileBg").
 		Preload("Attachments").
 		Where("user_id = ?", userID)
 

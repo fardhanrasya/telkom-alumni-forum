@@ -9,6 +9,7 @@ import (
 	"anoa.com/telkomalumiforum/internal/entity"
 	leaderboardDto "anoa.com/telkomalumiforum/internal/modules/leaderboard/dto"
 	leaderboardRepo "anoa.com/telkomalumiforum/internal/modules/leaderboard/repository"
+	missionService "anoa.com/telkomalumiforum/internal/modules/mission/service"
 	notifService "anoa.com/telkomalumiforum/internal/modules/notification/service"
 	userRepo "anoa.com/telkomalumiforum/internal/modules/user/repository"
 	"anoa.com/telkomalumiforum/pkg/dto"
@@ -38,14 +39,16 @@ type leaderboardService struct {
 	repo                leaderboardRepo.LeaderboardRepository
 	userRepo            userRepo.UserRepository
 	notificationService notifService.NotificationService
+	missionService      missionService.MissionService
 }
 
 // We need UserRepository to check if user is bot (by username)
-func NewLeaderboardService(repo leaderboardRepo.LeaderboardRepository, userRepo userRepo.UserRepository, notificationService notifService.NotificationService) LeaderboardService {
+func NewLeaderboardService(repo leaderboardRepo.LeaderboardRepository, userRepo userRepo.UserRepository, notificationService notifService.NotificationService, missionSvc missionService.MissionService) LeaderboardService {
 	return &leaderboardService{
 		repo:                repo,
 		userRepo:            userRepo,
 		notificationService: notificationService,
+		missionService:      missionSvc,
 	}
 }
 
@@ -132,6 +135,12 @@ func (s *leaderboardService) AddGamificationPointsAsync(targetUserID uuid.UUID, 
 		if err := s.repo.UpdateUserStats(targetUserID, points); err != nil {
 			log.Printf("Failed to update user stats for user %s: %v", targetUserID, err)
 			return
+		}
+
+		// 6b. Record mission progress for the same action (same pattern: one
+		// discrete event = one unit of mission progress, decoupled from points).
+		if s.missionService != nil {
+			s.missionService.RecordProgressAsync(targetUserID, actionType, 1)
 		}
 
 		// 7. Check if rank changed (rank up!)

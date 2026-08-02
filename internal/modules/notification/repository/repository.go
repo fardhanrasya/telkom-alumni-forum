@@ -35,6 +35,9 @@ func (r *notificationRepository) GetByUserID(userID uuid.UUID, limit, offset int
 		Preload("Actor", func(db *gorm.DB) *gorm.DB {
 			return db.Select("id", "username", "avatar_url")
 		}).
+		Preload("Actor.Equip.AvatarBorder").
+		Preload("Actor.Equip.ThreadBg").
+		Preload("Actor.Equip.ProfileBg").
 		Find(&notifications).Error
 	return notifications, err
 }

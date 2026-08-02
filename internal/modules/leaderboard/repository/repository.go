@@ -73,6 +73,7 @@ func (r *leaderboardRepository) GetTopUsers(limit int, timeframe string) ([]enti
 	if timeframe == "" || timeframe == "all_time" {
 		// Get top users by all-time score
 		err := r.db.Preload("User").Preload("User.Role").Preload("User.Profile").
+			Preload("User.Equip.AvatarBorder").Preload("User.Equip.ThreadBg").Preload("User.Equip.ProfileBg").
 			Order("total_score_all_time DESC").Limit(limit).Find(&stats).Error
 		if err != nil {
 			return nil, err
@@ -155,7 +156,9 @@ func (r *leaderboardRepository) GetTopUsers(limit int, timeframe string) ([]enti
 	}
 
 	var users []entity.User
-	if err := r.db.Preload("Role").Preload("Profile").Find(&users, userIDs).Error; err != nil {
+	if err := r.db.Preload("Role").Preload("Profile").
+		Preload("Equip.AvatarBorder").Preload("Equip.ThreadBg").Preload("Equip.ProfileBg").
+		Find(&users, userIDs).Error; err != nil {
 		return nil, err
 	}
 

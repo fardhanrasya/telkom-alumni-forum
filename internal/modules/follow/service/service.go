@@ -7,6 +7,7 @@ import (
 
 	"anoa.com/telkomalumiforum/internal/entity"
 	followRepo "anoa.com/telkomalumiforum/internal/modules/follow/repository"
+	missionService "anoa.com/telkomalumiforum/internal/modules/mission/service"
 	notifService "anoa.com/telkomalumiforum/internal/modules/notification/service"
 	userRepo "anoa.com/telkomalumiforum/internal/modules/user/repository"
 	"github.com/google/uuid"
@@ -24,20 +25,23 @@ type FollowService interface {
 }
 
 type followService struct {
-	followRepo followRepo.FollowRepository
-	userRepo   userRepo.UserRepository
-	notifSvc   notifService.NotificationService
+	followRepo     followRepo.FollowRepository
+	userRepo       userRepo.UserRepository
+	notifSvc       notifService.NotificationService
+	missionService missionService.MissionService
 }
 
 func NewFollowService(
 	followRepo followRepo.FollowRepository,
 	userRepo userRepo.UserRepository,
 	notifSvc notifService.NotificationService,
+	missionSvc missionService.MissionService,
 ) FollowService {
 	return &followService{
-		followRepo: followRepo,
-		userRepo:   userRepo,
-		notifSvc:   notifSvc,
+		followRepo:     followRepo,
+		userRepo:       userRepo,
+		notifSvc:       notifSvc,
+		missionService: missionSvc,
 	}
 }
 
@@ -70,6 +74,10 @@ func (s *followService) ToggleFollow(ctx context.Context, followerIDStr string, 
 
 	if err := s.followRepo.Follow(ctx, followerID, targetUser.ID); err != nil {
 		return false, err
+	}
+
+	if s.missionService != nil {
+		s.missionService.RecordProgressAsync(followerID, "follow", 1)
 	}
 
 	// Trigger Notification for new follower

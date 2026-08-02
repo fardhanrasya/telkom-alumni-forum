@@ -32,6 +32,9 @@ func main() {
 	if err := bootstrap.SeedRoles(db); err != nil {
 		log.Fatalf("failed to seed roles: %v", err)
 	}
+	if err := bootstrap.SeedMissionDefinitions(db); err != nil {
+		log.Fatalf("failed to seed mission definitions: %v", err)
+	}
 
 	appEnv := os.Getenv("APP_ENV")
 	if appEnv == "development" {

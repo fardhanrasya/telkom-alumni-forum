@@ -37,6 +37,9 @@ func (r *repository) GetTrending(ctx context.Context, limit int) ([]*entity.Thre
 		Preload("Category").
 		Preload("User").
 		Preload("User.Profile").
+		Preload("User.Equip.AvatarBorder").
+		Preload("User.Equip.ThreadBg").
+		Preload("User.Equip.ProfileBg").
 		Preload("Attachments").
 		Where("id IN ?", ids).
 		Find(&threads).Error; err != nil {

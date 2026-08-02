@@ -24,6 +24,10 @@ import (
 	categoryRepo "anoa.com/telkomalumiforum/internal/modules/category/repository"
 	categoryService "anoa.com/telkomalumiforum/internal/modules/category/service"
 
+	cosmeticHttp "anoa.com/telkomalumiforum/internal/modules/cosmetic/delivery/http"
+	cosmeticRepo "anoa.com/telkomalumiforum/internal/modules/cosmetic/repository"
+	cosmeticService "anoa.com/telkomalumiforum/internal/modules/cosmetic/service"
+
 	followHttp "anoa.com/telkomalumiforum/internal/modules/follow/delivery/http"
 	followRepo "anoa.com/telkomalumiforum/internal/modules/follow/repository"
 	followService "anoa.com/telkomalumiforum/internal/modules/follow/service"
@@ -31,6 +35,10 @@ import (
 	leaderboardHttp "anoa.com/telkomalumiforum/internal/modules/leaderboard/delivery/http"
 	leaderboardRepo "anoa.com/telkomalumiforum/internal/modules/leaderboard/repository"
 	leaderboardService "anoa.com/telkomalumiforum/internal/modules/leaderboard/service"
+
+	missionHttp "anoa.com/telkomalumiforum/internal/modules/mission/delivery/http"
+	missionRepo "anoa.com/telkomalumiforum/internal/modules/mission/repository"
+	missionService "anoa.com/telkomalumiforum/internal/modules/mission/service"
 
 	menfessHttp "anoa.com/telkomalumiforum/internal/modules/menfess/delivery/http"
 	menfessRepo "anoa.com/telkomalumiforum/internal/modules/menfess/repository"
@@ -65,6 +73,10 @@ import (
 	userService "anoa.com/telkomalumiforum/internal/modules/user/service"
 
 	viewService "anoa.com/telkomalumiforum/internal/modules/view/service"
+
+	walletHttp "anoa.com/telkomalumiforum/internal/modules/wallet/delivery/http"
+	walletRepo "anoa.com/telkomalumiforum/internal/modules/wallet/repository"
+	walletService "anoa.com/telkomalumiforum/internal/modules/wallet/service"
 
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
@@ -107,6 +119,21 @@ func NewServer(db *gorm.DB, redisClient *redis.Client) *Server {
 	leaderboardRepo := leaderboardRepo.NewLeaderboardRepository(db)
 	followRepo := followRepo.NewFollowRepository(db)
 
+	// Wallet & Mission Modules (coin ledger + mission engine, no dependency
+	// on leaderboard/follow so they're wired first)
+	walletRepository := walletRepo.NewWalletRepository(db)
+	walletSvc := walletService.NewWalletService(walletRepository)
+	walletHandler := walletHttp.NewWalletHandler(walletSvc)
+
+	missionRepository := missionRepo.NewMissionRepository(db)
+	missionSvc := missionService.NewMissionService(missionRepository, walletRepository)
+	missionHandler := missionHttp.NewMissionHandler(missionSvc)
+
+	// Cosmetic Module (catalog/purchase/equip)
+	cosmeticRepository := cosmeticRepo.NewCosmeticRepository(db)
+	cosmeticSvc := cosmeticService.NewCosmeticService(cosmeticRepository, walletRepository, leaderboardRepo, userRepo, imageStorage)
+	cosmeticHandler := cosmeticHttp.NewCosmeticHandler(cosmeticSvc)
+
 	profileSvc := profileService.NewProfileService(userRepo, imageStorage, leaderboardRepo, followRepo)
 	profileHandler := profileHttp.NewProfileHandler(profileSvc)
 
@@ -124,7 +151,7 @@ func NewServer(db *gorm.DB, redisClient *redis.Client) *Server {
 	notificationHandler := notiHttp.NewNotificationHandler(notificationSvc, redisClient)
 
 	// Follow Module
-	followSvc := followService.NewFollowService(followRepo, userRepo, notificationSvc)
+	followSvc := followService.NewFollowService(followRepo, userRepo, notificationSvc, missionSvc)
 	followHandler := followHttp.NewFollowHandler(followSvc)
 
 	rateLimiter := middleware.NewRateLimiter(redisClient)
@@ -132,7 +159,7 @@ func NewServer(db *gorm.DB, redisClient *redis.Client) *Server {
 	threadRepo := threadRepo.NewRepository(db)
 	postRepo := postRepo.NewPostRepository(db)
 
-	leaderboardSvc := leaderboardService.NewLeaderboardService(leaderboardRepo, userRepo, notificationSvc)
+	leaderboardSvc := leaderboardService.NewLeaderboardService(leaderboardRepo, userRepo, notificationSvc, missionSvc)
 	leaderboardHandler := leaderboardHttp.NewLeaderboardHandler(leaderboardSvc)
 
 	reactionRepo := reactionRepo.NewReactionRepository(db)
@@ -206,7 +233,7 @@ func NewServer(db *gorm.DB, redisClient *redis.Client) *Server {
 	authMiddleware := middleware.NewAuthMiddleware(userRepo)
 
 	api := router.Group("/api")
-	
+
 	// Public routes (no auth required)
 	auth := api.Group("/auth")
 	{
@@ -231,6 +258,11 @@ func NewServer(db *gorm.DB, redisClient *redis.Client) *Server {
 		publicRead.GET("/reactions/:refType/:refID", reactionHandler.GetReactions)
 		publicRead.GET("/leaderboard", leaderboardHandler.GetLeaderboard)
 		publicRead.GET("/users/:username/follow-status", followHandler.GetFollowStatus)
+
+		// Cosmetics — public catalog & equip lookup (guests see equipped cosmetics too)
+		publicRead.GET("/cosmetics/catalog", cosmeticHandler.GetCatalog)
+		publicRead.GET("/users/:username/cosmetics", cosmeticHandler.GetUserCosmetics)
+		publicRead.POST("/cosmetics/batch", cosmeticHandler.BatchGetCosmetics)
 	}
 
 	// Protected routes (require valid JWT token)
@@ -247,6 +279,8 @@ func NewServer(db *gorm.DB, redisClient *redis.Client) *Server {
 			adminGroup.DELETE("/users/:id", adminHandler.DeleteUser)
 			adminGroup.POST("/categories", categoryHandler.CreateCategory)
 			adminGroup.DELETE("/categories/:id", categoryHandler.DeleteCategory)
+			adminGroup.POST("/cosmetics", cosmeticHandler.CreateCosmetic)
+			adminGroup.PUT("/cosmetics/:id", cosmeticHandler.UpdateCosmetic)
 		}
 
 		// Protected Thread & Post actions
@@ -266,14 +300,14 @@ func NewServer(db *gorm.DB, redisClient *redis.Client) *Server {
 		// Protected Profile actions
 		protected.GET("/profile/me", profileHandler.GetCurrentProfile)
 		protected.PUT("/profile", profileHandler.UpdateProfile)
-		
+
 		// Notification routes
 		protected.GET("/notifications", notificationHandler.GetNotifications)
 		protected.GET("/notifications/unread-count", notificationHandler.UnreadCount)
 		protected.PUT("/notifications/:id/read", notificationHandler.MarkAsRead)
 		protected.PUT("/notifications/read-all", notificationHandler.MarkAllAsRead)
 		protected.GET("/notifications/ws", notificationHandler.HandleWebSocket)
-		
+
 		// Menfess routes
 		protected.POST("/menfess", menfessHandler.CreateMenfess)
 		protected.GET("/menfess", menfessHandler.GetMenfesses)
@@ -281,6 +315,19 @@ func NewServer(db *gorm.DB, redisClient *redis.Client) *Server {
 		// Reaction & Upload routes
 		protected.POST("/reactions", reactionHandler.ToggleReaction)
 		protected.POST("/upload", attachmentHandler.UploadAttachment)
+
+		// Wallet routes
+		protected.GET("/wallet", walletHandler.GetWallet)
+
+		// Mission routes
+		protected.GET("/missions", missionHandler.GetMissions)
+		protected.POST("/missions/:id/claim", missionHandler.ClaimMission)
+
+		// Cosmetic purchase/inventory/equip routes
+		protected.POST("/cosmetics/:id/purchase", cosmeticHandler.Purchase)
+		protected.GET("/inventory", cosmeticHandler.GetInventory)
+		protected.POST("/cosmetics/equip", cosmeticHandler.Equip)
+		protected.POST("/cosmetics/unequip", cosmeticHandler.Unequip)
 	}
 
 	return &Server{

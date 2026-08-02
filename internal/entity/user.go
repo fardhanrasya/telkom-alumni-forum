@@ -21,16 +21,17 @@ const (
 )
 
 type User struct {
-	ID           uuid.UUID `gorm:"type:uuid;primaryKey" json:"id"`
-	Username     string    `gorm:"size:50;uniqueIndex;not null" json:"username"`
-	Email        string    `gorm:"size:100;uniqueIndex;not null" json:"email"`
-	PasswordHash string    `gorm:"size:255;not null" json:"-"`
-	RoleID       *uint     `json:"role_id"`
-	Role         Role      `gorm:"constraint:OnUpdate:CASCADE,OnDelete:SET NULL" json:"role"`
-	AvatarURL    *string   `gorm:"type:text" json:"avatar_url,omitempty"`
-	GoogleID     *string   `gorm:"size:100;uniqueIndex" json:"google_id,omitempty"`
-	CreatedAt    time.Time `gorm:"autoCreateTime" json:"created_at"`
-	Profile      *Profile  `gorm:"constraint:OnDelete:CASCADE" json:"profile,omitempty"`
+	ID           uuid.UUID  `gorm:"type:uuid;primaryKey" json:"id"`
+	Username     string     `gorm:"size:50;uniqueIndex;not null" json:"username"`
+	Email        string     `gorm:"size:100;uniqueIndex;not null" json:"email"`
+	PasswordHash string     `gorm:"size:255;not null" json:"-"`
+	RoleID       *uint      `json:"role_id"`
+	Role         Role       `gorm:"constraint:OnUpdate:CASCADE,OnDelete:SET NULL" json:"role"`
+	AvatarURL    *string    `gorm:"type:text" json:"avatar_url,omitempty"`
+	GoogleID     *string    `gorm:"size:100;uniqueIndex" json:"google_id,omitempty"`
+	CreatedAt    time.Time  `gorm:"autoCreateTime" json:"created_at"`
+	Profile      *Profile   `gorm:"constraint:OnDelete:CASCADE" json:"profile,omitempty"`
+	Equip        *UserEquip `gorm:"foreignKey:UserID;constraint:OnDelete:CASCADE" json:"equip,omitempty"`
 }
 
 func (u *User) BeforeCreate(tx *gorm.DB) error {
