@@ -318,6 +318,7 @@ func NewServer(db *gorm.DB, redisClient *redis.Client) *Server {
 
 		// Wallet routes
 		protected.GET("/wallet", walletHandler.GetWallet)
+		protected.GET("/wallet/transactions", walletHandler.GetTransactions)
 
 		// Mission routes
 		protected.GET("/missions", missionHandler.GetMissions)

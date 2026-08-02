@@ -21,6 +21,7 @@ type WalletRepository interface {
 	// (source_type, source_ref_id) idempotency key. If a transaction already
 	// exists for that key, the existing row is returned as-is (no-op).
 	ApplyLedgerEntry(tx *gorm.DB, userID uuid.UUID, delta int, sourceType, sourceRefID string) (*entity.CoinTransaction, error)
+	GetTransactions(ctx context.Context, userID uuid.UUID, limit, offset int) ([]entity.CoinTransaction, error)
 	WithTx(tx *gorm.DB) WalletRepository
 	DB() *gorm.DB
 }
@@ -118,4 +119,15 @@ func (r *walletRepository) ApplyLedgerEntry(tx *gorm.DB, userID uuid.UUID, delta
 	}
 
 	return entry, nil
+}
+
+func (r *walletRepository) GetTransactions(ctx context.Context, userID uuid.UUID, limit, offset int) ([]entity.CoinTransaction, error) {
+	var transactions []entity.CoinTransaction
+	err := r.db.WithContext(ctx).
+		Where("user_id = ?", userID).
+		Order("created_at DESC, id DESC").
+		Limit(limit).
+		Offset(offset).
+		Find(&transactions).Error
+	return transactions, err
 }

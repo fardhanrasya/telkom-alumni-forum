@@ -25,6 +25,7 @@ type WalletService interface {
 	// Grant credits coin to a user via the CoinGrant contract. Idempotent on
 	// (SourceType, SourceRefID) — calling twice with the same key is a no-op.
 	Grant(ctx context.Context, req CoinGrantRequest) error
+	GetTransactions(ctx context.Context, userID uuid.UUID, limit, offset int) (*walletDto.TransactionListResponse, error)
 }
 
 type walletService struct {
@@ -49,4 +50,34 @@ func (s *walletService) Grant(ctx context.Context, req CoinGrantRequest) error {
 		_, err := s.repo.WithTx(tx).ApplyLedgerEntry(tx, req.UserID, req.Amount, req.SourceType, req.SourceRefID)
 		return err
 	})
+}
+
+func (s *walletService) GetTransactions(ctx context.Context, userID uuid.UUID, limit, offset int) (*walletDto.TransactionListResponse, error) {
+	if limit <= 0 || limit > 100 {
+		limit = 20
+	}
+	if offset < 0 {
+		offset = 0
+	}
+
+	transactions, err := s.repo.GetTransactions(ctx, userID, limit, offset)
+	if err != nil {
+		return nil, err
+	}
+
+	resp := &walletDto.TransactionListResponse{
+		Data: make([]walletDto.TransactionResponse, 0, len(transactions)),
+	}
+	resp.Meta.Limit = limit
+	resp.Meta.Offset = offset
+	for _, t := range transactions {
+		resp.Data = append(resp.Data, walletDto.TransactionResponse{
+			ID:           t.ID,
+			Amount:       t.Amount,
+			SourceType:   t.SourceType,
+			BalanceAfter: t.BalanceAfter,
+			CreatedAt:    t.CreatedAt,
+		})
+	}
+	return resp, nil
 }
